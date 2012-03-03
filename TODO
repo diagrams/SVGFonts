@@ -1,0 +1,5 @@
+Sorted after importance
+
+- Speed
+- Binary XML (i.e. fast infoset), or a temp file, because xml-parsing has a speed problem)
+- Auto Hinting (this depends on how the rasterization in the backend works)

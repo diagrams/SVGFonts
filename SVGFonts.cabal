@@ -1,0 +1,68 @@
+Name:             SVGFonts
+Version:          1.1
+Synopsis:         Fonts from the SVG-Font format
+Description:      Native font support for the Diagrams library. The SVG-Font format is easy to parse
+                  and was therefore chosen for a font library completely written in Haskell.
+                  .
+                  You can convert your own font to SVG with <http://fontforge.sourceforge.net/> or use the included LinLibertine, Bitstream
+                  .
+                  Features
+                  .
+                  * Complete implementation of the features that Fontforge produces (but not the complete SVG format)
+                  .
+                  * Kerning (i.e. the two characters in \"VA\" have a shorter distance than in \"VV\")
+                  .
+                  * Unicode
+                  .
+                  * Ligatures
+                  .
+                  XML speed issues can be solved by trimming the svg file to only those characters that are used (or maybe binary xml one day).
+                  . 
+                  Version 1.0 of this library supports texturing which would only make sense in a Diagrams Backend that does rasterization in Haskell.
+                  .
+                  Example:
+                  .
+                  >  # LANGUAGE NoMonomorphismRestriction #
+                  >
+                  > import Diagrams.Prelude
+                  > import Diagrams.Backend.Cairo.CmdLine
+                  > import Graphics.SVGFonts.ReadFont (textSVG)
+                  >
+                  >
+                  > main = defaultMain ( (text' "Hello World") <> (rect 8 1) # alignBL )
+                  >
+                  > text'  t = stroke (textSVG t 1) # fc purple # fillRule EvenOdd
+                  > text'' t = stroke (textSVG_ $ TextOpts t lin INSIDE_H KERN 1 1 ) # fc purple # fillRule EvenOdd
+                  .
+category:         Graphics
+License:          BSD3
+License-file:     LICENSE
+Author:           Tillmann Vogt
+Maintainer:       tillk.vogt@googlemail.com
+Build-Type:       Simple
+Cabal-Version:    >=1.6
+
+data-files: src/Test/*.svg
+
+Library
+    hs-source-dirs: src
+    other-modules: Paths_SVGFonts
+    build-depends:
+        attoparsec-text,
+        base == 4.*,
+        containers == 0.4.*,
+        data-default,
+        diagrams-lib,
+        directory >= 1.0 && <1.2,
+        parsec,
+        split,
+        text,
+        tuple,
+        vector,
+        vector-space,
+        xml == 1.3.*
+    exposed-modules:
+        Graphics.SVGFonts.ReadFont
+        Graphics.SVGFonts.CharReference
+        Graphics.SVGFonts.ReadPath
+
