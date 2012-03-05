@@ -184,17 +184,17 @@ textSVG_ to | mWH (mode to) = makeString (textWidth to) (textHeight to)
   where
     makeString w h = -- translate (-w/2, - h/2) $ -- origin in the middle
                      scaleY (h/maxY) $ scaleX (w/sumh) $
-                     translate (0, - bbox_ly fontD) $
+                     translateY (- bbox_ly fontD) $
                      mconcat $
                      zipWith translate horPos
                      (map (polygonChar outl) str)
     (fontD,outl) = (fdo to)
     polygonChar outl ch = fromJust (Map.lookup ch outl)
-    horPos = reverse $ added ( (0,0) : (map ((1,0) ^*) hs) )
+    horPos = reverse $ added ( zeroV : (map (unitX ^*) hs) )
     hs = horizontalAdvances str fontD (isKern (spacing to))
     sumh = sum hs
     added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
-                       ((0,0),[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
+                       (zeroV,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
     ligatures = ((filter ((>1).length)).(Map.keys).sel1) fontD
@@ -214,55 +214,61 @@ outlMap :: String -> (FontData, OutlineMap)
 outlMap str = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
   where
   allUnicodes = Map.keys (sel1 fontD)
-  outlines ch = mconcat $ commandsToTrails (commands ch (sel1 fontD)) [] (0,0) (0,0) (0,0)
+  outlines ch = mconcat $ commandsToTrails (commands ch (sel1 fontD)) [] zeroV zeroV zeroV
   fontD = openFont str
 
 commandsToTrails :: [PathCommand] -> [Segment R2] -> R2 -> R2 -> R2 -> [Path R2]
 commandsToTrails [] _ _ _ _ = []
-commandsToTrails (c:cs) segments (lx,ly) lastContr beginPoint -- (lx,ly) is the endpoint of the last segment
+commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of the last segment
       | isNothing nextSegment = (translate beginPoint (pathFromTrail $ fromSegments segments)) :
-                  ( commandsToTrails cs [] (lx+x0, ly+y0) (contr c) (beginP c) ) -- one outline completed
+                  ( commandsToTrails cs [] (l ^+^ offs) (contr c) (beginP c) ) -- one outline completed
       | otherwise = commandsToTrails cs (segments ++ [fromJust nextSegment])
-                                           (lx+x0, ly+y0) (contr c) (beginP c)   -- work on outline
+                                           (l ^+^ offs) (contr c) (beginP c)   -- work on outline
   where nextSegment = go c
-        (x0,y0) | isJust nextSegment = segOffset (fromJust nextSegment)
-                | otherwise = (0,0)
-        (cx,cy) = lastContr -- last control point is always in absolute coordinates
-        beginP ( M_abs (x,y) ) = (x,y)
-        beginP ( M_rel (x,y) ) = (lx+x, ly+y)
+        offs | isJust nextSegment 
+               = segOffset (fromJust nextSegment)
+             | otherwise = zeroV
+        (x0,y0) = unr2 offs
+        (cx,cy) = unr2 lastContr -- last control point is always in absolute coordinates
+        beginP ( M_abs (x,y) ) = r2 (x,y)
+        beginP ( M_rel (x,y) ) = l ^+^ r2 (x,y)
         beginP _ = beginPoint
-        contr ( C_abs (x1,y1,x2,y2,x,y) ) = (x0+x-x2, y0+y-y2 ) -- control point of bezier curve
-        contr ( C_rel (x1,y1,x2,y2,x,y) ) = (   x-x2,    y-y2 )
-        contr ( S_abs (x2,y2,x,y) )       = (x0+x-x2, y0+y-y2 )
-        contr ( S_rel (x2,y2,x,y) )       = (   x-x2,    y-y2 )
-        contr ( Q_abs (x1,y1,x,y) ) = (x0+x-x1, y0+y-y1 )
-        contr ( Q_rel (x1,y1,x,y) ) = (   x-x1,    y-y1 )
-        contr ( T_abs (x,y) )       = (2*x0-cx, 2*y0-cy )
-        contr ( T_rel (x,y) )       = (   x-cx,    y-cy )
-        contr ( L_abs (x,y) ) = (x0, y0)
-        contr ( L_rel (x,y) ) = ( 0,  0)
-        contr ( M_abs (x,y) ) = (x0, y0)
-        contr ( M_rel (x,y) ) = ( 0,  0)
-        contr ( H_abs x ) = (x0, y0)
-        contr ( H_rel x ) = ( 0, y0)
-        contr ( V_abs y ) = (x0, y0)
-        contr ( V_rel y ) = (x0,  0)
+        contr ( C_abs (x1,y1,x2,y2,x,y) ) = r2 (x0+x-x2, y0+y-y2 ) -- control point of bezier curve
+        contr ( C_rel (x1,y1,x2,y2,x,y) ) = r2 (   x-x2,    y-y2 )
+        contr ( S_abs (x2,y2,x,y) )       = r2 (x0+x-x2, y0+y-y2 )
+        contr ( S_rel (x2,y2,x,y) )       = r2 (   x-x2,    y-y2 )
+        contr ( Q_abs (x1,y1,x,y) ) = r2 (x0+x-x1, y0+y-y1 )
+        contr ( Q_rel (x1,y1,x,y) ) = r2 (   x-x1,    y-y1 )
+        contr ( T_abs (x,y) )       = r2 (2*x0-cx, 2*y0-cy )
+        contr ( T_rel (x,y) )       = r2 (   x-cx,    y-cy )
+        contr ( L_abs (x,y) ) = r2 (x0, y0)
+        contr ( L_rel (x,y) ) = r2 ( 0,  0)
+        contr ( M_abs (x,y) ) = r2 (x0, y0)
+        contr ( M_rel (x,y) ) = r2 ( 0,  0)
+        contr ( H_abs x ) = r2 (x0, y0)
+        contr ( H_rel x ) = r2 ( 0, y0)
+        contr ( V_abs y ) = r2 (x0, y0)
+        contr ( V_rel y ) = r2 (x0,  0)
+
+        straight' = straight . r2
+        bezier3' p1 p2 p3 = bezier3 (r2 p1) (r2 p2) (r2 p3)
+
         go ( M_abs (x,y) ) = Nothing
         go ( M_rel (x,y) ) = Nothing
-        go ( L_abs (x,y) ) = Just $ straight (x0+x, y0+y)
-        go ( L_rel (x,y) ) = Just $ straight (x, y)
-        go ( H_abs x) = Just $ straight (x0 + x, y0)
-        go ( H_rel x) = Just $ straight (x, 0)
-        go ( V_abs y) = Just $ straight (x0, y0 + y)
-        go ( V_rel y) = Just $ straight (0, y)
-        go ( C_abs (x1,y1,x2,y2,x,y) ) = Just $ bezier3 (x0+x1, y0+y1) (x0+x2,y0+y2) (x0+x,y0+y)
-        go ( C_rel (x1,y1,x2,y2,x,y) ) = Just $ bezier3 (x1, y1) (x2, y2) (x, y)
-        go ( S_abs (      x2,y2,x,y) ) = Just $ bezier3 (cx, cy) (x0+x2, y0+y2) (x0+x, y0+y)
-        go ( S_rel (      x2,y2,x,y) ) = Just $ bezier3 (cx, cy) (x2, y2) (x, y)
-        go ( Q_abs (x1,y1,x,y) ) = Just $ bezier3 (x0 + x1, y0 + y1) (x0 + x, y0 + y) (x0 + x, y0 + y)
-        go ( Q_rel (x1,y1,x,y) ) = Just $ bezier3 (x1, y1) (x, y) (x, y)
-        go ( T_abs (x,y) ) = Just $ bezier3 (cx, cy) (x0 + x, y0 + y) (x0 + x, y0 + y)
-        go ( T_rel (x,y) ) = Just $ bezier3 (cx, cy) (x, y) (x, y)
+        go ( L_abs (x,y) ) = Just $ straight' (x0+x, y0+y)
+        go ( L_rel (x,y) ) = Just $ straight' (x, y)
+        go ( H_abs x) = Just $ straight' (x0 + x, y0)
+        go ( H_rel x) = Just $ straight' (x, 0)
+        go ( V_abs y) = Just $ straight' (x0, y0 + y)
+        go ( V_rel y) = Just $ straight' (0, y)
+        go ( C_abs (x1,y1,x2,y2,x,y) ) = Just $ bezier3' (x0+x1, y0+y1) (x0+x2,y0+y2) (x0+x,y0+y)
+        go ( C_rel (x1,y1,x2,y2,x,y) ) = Just $ bezier3' (x1, y1) (x2, y2) (x, y)
+        go ( S_abs (      x2,y2,x,y) ) = Just $ bezier3' (cx, cy) (x0+x2, y0+y2) (x0+x, y0+y)
+        go ( S_rel (      x2,y2,x,y) ) = Just $ bezier3' (cx, cy) (x2, y2) (x, y)
+        go ( Q_abs (x1,y1,x,y) ) = Just $ bezier3' (x0 + x1, y0 + y1) (x0 + x, y0 + y) (x0 + x, y0 + y)
+        go ( Q_rel (x1,y1,x,y) ) = Just $ bezier3' (x1, y1) (x, y) (x, y)
+        go ( T_abs (x,y) ) = Just $ bezier3' (cx, cy) (x0 + x, y0 + y) (x0 + x, y0 + y)
+        go ( T_rel (x,y) ) = Just $ bezier3' (cx, cy) (x, y) (x, y)
         go ( Z ) = Nothing
 
 commands :: String -> SvgGlyph -> [PathCommand]
