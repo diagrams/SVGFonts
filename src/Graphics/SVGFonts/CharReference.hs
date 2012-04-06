@@ -1,5 +1,5 @@
 module Graphics.SVGFonts.CharReference (charsFromFullName, characterStrings) where
-import Control.Applicative ((<|>))
+import Control.Applicative ((<|>), many)
 import Data.Attoparsec.Text
 import qualified Data.Map as Map
 import qualified Data.Text as T

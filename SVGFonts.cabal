@@ -48,7 +48,7 @@ Library
     hs-source-dirs: src
     other-modules: Paths_SVGFonts
     build-depends:
-        attoparsec-text,
+        attoparsec,
         base == 4.*,
         containers == 0.4.*,
         data-default,
