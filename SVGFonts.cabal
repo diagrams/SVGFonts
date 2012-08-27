@@ -40,9 +40,13 @@ License-file:     LICENSE
 Author:           Tillmann Vogt
 Maintainer:       diagrams-discuss@googlegroups.com
 Build-Type:       Simple
-Cabal-Version:    >=1.6
+Cabal-Version:    >=1.10
 
 data-files: src/Test/*.svg
+
+source-repository head
+  type: git
+  location: https://github.com/tkvogt/SVGFonts.git
 
 Library
     hs-source-dirs: src
@@ -65,4 +69,4 @@ Library
         Graphics.SVGFonts.ReadFont
         Graphics.SVGFonts.CharReference
         Graphics.SVGFonts.ReadPath
-
+    default-language: Haskell2010
