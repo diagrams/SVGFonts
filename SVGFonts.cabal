@@ -1,5 +1,5 @@
 Name:             SVGFonts
-Version:          1.1.0.1
+Version:          1.1.2
 Synopsis:         Fonts from the SVG-Font format
 Description:      Native font support for the Diagrams library. The SVG-Font format is easy to parse
                   and was therefore chosen for a font library completely written in Haskell.
@@ -50,7 +50,7 @@ Library
     build-depends:
         attoparsec,
         base == 4.*,
-        containers == 0.4.*,
+        containers >= 0.4 && < 0.6,
         data-default,
         diagrams-lib,
         directory >= 1.0 && <1.2,
