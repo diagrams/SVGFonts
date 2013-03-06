@@ -9,8 +9,7 @@ import Data.List.Split (splitOn, splitWhen)
 import Data.Maybe (fromMaybe, fromJust, isJust, isNothing, maybeToList)
 import qualified Data.Map as Map
 import qualified Data.Text as T
-import Data.Monoid (mconcat)
-import Data.Tuple.Select (sel1, sel2, sel3, sel4, sel5)
+import Data.Tuple.Select
 import Data.Vector (Vector)
 import Data.VectorSpace
 import Diagrams.Path
@@ -21,7 +20,6 @@ import qualified Data.Vector as V
 import Graphics.SVGFonts.CharReference (charsFromFullName, characterStrings)
 import Graphics.SVGFonts.ReadPath (pathFromString, PathCommand(..))
 import Paths_SVGFonts(getDataFileName)
-import System.Directory
 import System.IO.Unsafe (unsafePerformIO)
 import Text.XML.Light
 
@@ -50,16 +48,17 @@ type FontData = (SvgGlyph, Kern, [Double], String) -- ^ (SvgGlyph, Kern, bbox-st
 -- | Open an SVG-Font File and extract the data
 --
 openFont :: FilePath -> FontData
-openFont file = ( Map.fromList (myZip4 (unicodes, glyphNames, horiz, ds)),  -- Map with unicode keys
-                  (transform u1s, transform u2s, transform g1s, transform g2s, kAr), -- kerning data
+openFont file = ( Map.fromList (myZip4 (unicodes, glyphNames, horiz, pathDatas)),  -- Map with unicode keys
+                  (transformChars u1s, transformChars u2s, transformChars g1s, transformChars g2s, kAr), -- kerning data
                   parsedBBox,
                   fname file
                 )
   where
     -- monospaced fonts sometimes don't have a "horiz-adv-x="-value , replace with bbox value
-    myZip4 (a:as, b:bs, c:cs, d:ds) | c == []   = (a, (b, (parsedBBox!!2) - (parsedBBox!!0), d)) :
-                                                  (myZip4 (as,bs,cs,ds))
-                                    | otherwise = (a, (b, read c, d)) : (myZip4 (as,bs,cs,ds))
+    myZip4 (a:as, b:bs, c:cs, d:ds)
+        | c == []   = (a, (b, (parsedBBox!!2) - (parsedBBox!!0), d)) :
+                        (myZip4 (as,bs,cs,ds))
+        | otherwise = (a, (b, read c, d)) : (myZip4 (as,bs,cs,ds))
     myZip4 _ = []
     xml = onlyElems $ parseXML $ unsafePerformIO $ readFile $ file
     selectFontface = concat $ map (findElements (unqual "font-face")) xml
@@ -70,7 +69,7 @@ openFont file = ( Map.fromList (myZip4 (unicodes, glyphNames, horiz, ds)),  -- M
     glyphNames  = map (fromMaybe "") $ map (findAttr (unqual "glyph-name")) selectGlyphs
     unicodes    = map charsFromFullName  $ map (findAttr (unqual "unicode")) selectGlyphs
     horiz       = map (fromMaybe "") $ map (findAttr (unqual "horiz-adv-x")) selectGlyphs
-    ds          = map (fromMaybe "") $ map (findAttr (unqual "d"))           selectGlyphs
+    pathDatas   = map (fromMaybe "") $ map (findAttr (unqual "d"))           selectGlyphs
     u1s         = map (fromMaybe "") $ map (findAttr (unqual "u1"))  selectKerns
     u2s         = map (fromMaybe "") $ map (findAttr (unqual "u2"))  selectKerns
     g1s         = map (fromMaybe "") $ map (findAttr (unqual "g1"))  selectKerns
@@ -78,15 +77,14 @@ openFont file = ( Map.fromList (myZip4 (unicodes, glyphNames, horiz, ds)),  -- M
     ks          = map (fromMaybe "") $ map (findAttr (unqual "k"))   selectKerns
     kAr     = V.fromList (map read ks)
 
-    transform chars = Map.fromList $ map ch $ multiSet $ map (\(x,y) -> (x,[y])) $ sort fst $ concat $ index chars
+    transformChars chars = Map.fromList $ map ch $ multiSet $ map (\(x,y) -> (x,[y])) $ sort fst $ concat $ index chars
     ch (x,y) | null x = ("",y)
              | otherwise = (x,y)
 
     index u = addIndex (map (splitWhen isColon) u) -- ie ["aa,b","c,d"] to [["aa","b"],["c","d"]]
     isColon = (== ',')                             -- to [("aa",0),("b",0)],[("c",1), ("d",1)]
 
-    addIndex qs = zipWith (\x y -> (map (f x) y)) [0..] qs
-    f = \index char -> (char,index)
+    addIndex qs = zipWith (\x y -> (map (\z -> (z,x)) y)) [0..] qs
     sort f xs = sortBy (\x y -> compare (f x) (f y) ) xs
 
     multiSet [] = []
@@ -107,9 +105,8 @@ horizontalAdvances (ch0:ch1:s) fd kerning = ((hadv ch0 fd) - (ka (sel2 fd))) :
   where ka kern | kerning = (kernAdvance ch0 ch1 kern True) + (kernAdvance ch0 ch1 kern False)
                 | otherwise = 0
 
-hadv ch fontD | isJust lookup = sel2 (fromJust (Map.lookup ch (sel1 fontD)))
-              | otherwise = 0
-  where lookup = Map.lookup ch (sel1 fontD)
+hadv :: String -> FontData -> Double
+hadv ch fontD = maybe 0 sel2 (Map.lookup ch (sel1 fontD))
 
 kernAdvance :: String -> String -> Kern -> Bool -> Double
 kernAdvance ch0 ch1 kern u |     u && not (null s0) = (sel5 kern) V.! (head s0)
@@ -124,10 +121,13 @@ data Mode = INSIDE_WH-- ^ INSIDE_WH: The string is stretched inside Width and He
           | INSIDE_W -- ^ INSIDE_W:  The string fills the complete width, heigth adjusted
           | INSIDE_H -- ^ INSIDE_H:  The string fills the complete height, width adjusted
 
+mWH :: Mode -> Bool
 mWH INSIDE_WH = True
 mWH _ = False
+mW :: Mode -> Bool
 mW INSIDE_W = True
 mW _ = False
+mH :: Mode -> Bool
 mH INSIDE_H = True
 mH _ = False
 
@@ -136,6 +136,7 @@ data Spacing = KERN -- ^ Recommended, same as HADV but sometimes overridden by k
                     -- i.e. the horizontal advance in "VV" is bigger than in "VA"
              | HADV -- ^ Every glyph has a unique constant horiz. advance
 
+isKern :: Spacing -> Bool
 isKern KERN = True
 isKern _    = False
 
@@ -154,10 +155,14 @@ data TextOpts = TextOpts
                 , textHeight :: Double
                 }
 
+ro :: FilePath -> FilePath
 ro = unsafePerformIO . getDataFileName -- read only of static data (safe)
 
+bit :: (FontData, OutlineMap)
 bit = outlMap (ro "src/Test/Bitstream.svg")
+lin :: (FontData, OutlineMap)
 lin = outlMap (ro "src/Test/LinLibertine.svg")
+lin2 :: (FontData, OutlineMap)
 lin2 = outlMap (ro "src/Test/LinLibertineCut.svg")
 
 instance Default TextOpts where
@@ -178,18 +183,20 @@ instance Default TextOpts where
 -- @
 --
 textSVG_ :: TextOpts -> Path R2
-textSVG_ to | mWH (mode to) = makeString (textWidth to) (textHeight to)
-            | mW  (mode to) = makeString (textWidth to) ((textWidth to) * maxY / sumh)
-            | mH  (mode to) = makeString ((textHeight to) * sumh / maxY) (textHeight to)
+textSVG_ to =
+  case mode to of
+    INSIDE_WH -> makeString (textWidth to) (textHeight to)
+    INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)
+    INSIDE_H  -> makeString (textHeight to * sumh / maxY) (textHeight to)
   where
     makeString w h = -- translate (-w/2, - h/2) $ -- origin in the middle
                      scaleY (h/maxY) $ scaleX (w/sumh) $
                      translateY (- bbox_ly fontD) $
                      mconcat $
                      zipWith translate horPos
-                     (map (polygonChar outl) str)
+                     (map polygonChar str)
     (fontD,outl) = (fdo to)
-    polygonChar outl ch = fromJust (Map.lookup ch outl)
+    polygonChar ch = fromJust (Map.lookup ch outl)
     horPos = reverse $ added ( zeroV : (map (unitX ^*) hs) )
     hs = horizontalAdvances str fontD (isKern (spacing to))
     sumh = sum hs
@@ -201,10 +208,13 @@ textSVG_ to | mWH (mode to) = makeString (textWidth to) (textHeight to)
     str = map T.unpack $ characterStrings (txt to) ligatures
 
 
+bbox_dy :: FontData -> Double
 bbox_dy fontData = (bbox!!3) - (bbox!!1)
   where bbox = sel3 fontData -- bbox = [lower left x, lower left y, upper right x, upper right y]
 
+bbox_lx :: FontData -> Double
 bbox_lx fontData   = (sel3 fontData) !! 0
+bbox_ly :: FontData -> Double
 bbox_ly fontData   = (sel3 fontData) !! 1
 
 
@@ -233,28 +243,28 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
         beginP ( M_abs (x,y) ) = r2 (x,y)
         beginP ( M_rel (x,y) ) = l ^+^ r2 (x,y)
         beginP _ = beginPoint
-        contr ( C_abs (x1,y1,x2,y2,x,y) ) = r2 (x0+x-x2, y0+y-y2 ) -- control point of bezier curve
-        contr ( C_rel (x1,y1,x2,y2,x,y) ) = r2 (   x-x2,    y-y2 )
-        contr ( S_abs (x2,y2,x,y) )       = r2 (x0+x-x2, y0+y-y2 )
-        contr ( S_rel (x2,y2,x,y) )       = r2 (   x-x2,    y-y2 )
+        contr ( C_abs (_x1,_y1,x2,y2,x,y) ) = r2 (x0+x-x2, y0+y-y2 ) -- control point of bezier curve
+        contr ( C_rel (_x1,_y1,x2,y2,x,y) ) = r2 (   x-x2,    y-y2 )
+        contr ( S_abs (x2,y2,x,y) )         = r2 (x0+x-x2, y0+y-y2 )
+        contr ( S_rel (x2,y2,x,y) )         = r2 (   x-x2,    y-y2 )
         contr ( Q_abs (x1,y1,x,y) ) = r2 (x0+x-x1, y0+y-y1 )
         contr ( Q_rel (x1,y1,x,y) ) = r2 (   x-x1,    y-y1 )
-        contr ( T_abs (x,y) )       = r2 (2*x0-cx, 2*y0-cy )
+        contr ( T_abs (_x,_y) )     = r2 (2*x0-cx, 2*y0-cy )
         contr ( T_rel (x,y) )       = r2 (   x-cx,    y-cy )
-        contr ( L_abs (x,y) ) = r2 (x0, y0)
-        contr ( L_rel (x,y) ) = r2 ( 0,  0)
-        contr ( M_abs (x,y) ) = r2 (x0, y0)
-        contr ( M_rel (x,y) ) = r2 ( 0,  0)
-        contr ( H_abs x ) = r2 (x0, y0)
-        contr ( H_rel x ) = r2 ( 0, y0)
-        contr ( V_abs y ) = r2 (x0, y0)
-        contr ( V_rel y ) = r2 (x0,  0)
+        contr ( L_abs (_x,_y) ) = r2 (x0, y0)
+        contr ( L_rel (_x,_y) ) = r2 ( 0,  0)
+        contr ( M_abs (_x,_y) ) = r2 (x0, y0)
+        contr ( M_rel (_x,_y) ) = r2 ( 0,  0)
+        contr ( H_abs _x ) = r2 (x0, y0)
+        contr ( H_rel _x ) = r2 ( 0, y0)
+        contr ( V_abs _y ) = r2 (x0, y0)
+        contr ( V_rel _y ) = r2 (x0,  0)
 
         straight' = straight . r2
-        bezier3' p1 p2 p3 = bezier3 (r2 p1) (r2 p2) (r2 p3)
+        bezier3' point1 point2 point3 = bezier3 (r2 point1) (r2 point2) (r2 point3)
 
-        go ( M_abs (x,y) ) = Nothing
-        go ( M_rel (x,y) ) = Nothing
+        go ( M_abs (_x,_y) ) = Nothing
+        go ( M_rel (_x,_y) ) = Nothing
         go ( L_abs (x,y) ) = Just $ straight' (x0+x, y0+y)
         go ( L_rel (x,y) ) = Just $ straight' (x, y)
         go ( H_abs x) = Just $ straight' (x0 + x, y0)
