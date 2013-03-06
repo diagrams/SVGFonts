@@ -220,7 +220,7 @@ outlMap str = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
 commandsToTrails :: [PathCommand] -> [Segment R2] -> R2 -> R2 -> R2 -> [Path R2]
 commandsToTrails [] _ _ _ _ = []
 commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of the last segment
-      | isNothing nextSegment = (translate beginPoint (pathFromTrail $ fromSegments segments)) :
+      | isNothing nextSegment = (translate beginPoint (pathFromTrail . close $ fromSegments segments)) :
                   ( commandsToTrails cs [] (l ^+^ offs) (contr c) (beginP c) ) -- one outline completed
       | otherwise = commandsToTrails cs (segments ++ [fromJust nextSegment])
                                            (l ^+^ offs) (contr c) (beginP c)   -- work on outline
