@@ -50,6 +50,7 @@ source-repository head
 
 Library
     hs-source-dirs: src
+    ghc-options: -W -Wall -O2
     other-modules: Paths_SVGFonts
     build-depends:
         attoparsec,
