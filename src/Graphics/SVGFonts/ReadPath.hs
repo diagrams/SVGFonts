@@ -17,16 +17,11 @@ module Graphics.SVGFonts.ReadPath
  where
 
 import Text.ParserCombinators.Parsec hiding (spaces)
-import Text.ParserCombinators.Parsec.Expr
-import Text.ParserCombinators.Parsec.Prim
 import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Language(emptyDef)
-import System.IO.Unsafe (unsafePerformIO)
-import Debug.Trace
 
 type X = Double
 type Y = Double
-type F2 = (X,Y)
 type Tup = (X,Y)
 type X1 = X
 type Y1 = Y
@@ -70,6 +65,7 @@ pathFromString str
            Right x  -> return x
       }
 
+spaces :: Parser ()
 spaces = skipMany space
 
 path :: Parser [PathCommand]
@@ -102,6 +98,7 @@ pathElement = do{ whiteSpace;
               do{ symbol "a";  l <- many1 tupel2; return (map (\x-> A_rel) l) }     -- not used
             }
 
+comma :: Parser ()
 comma = do{ spaces; try (do { (char ','); return () }) <|> spaces }
 
 tupel2 :: Parser (X,Y)
@@ -126,9 +123,14 @@ myfloat = try (do{ symbol "-"; n <- float; return (negate n) }) <|>
           try float <|> -- 0 is not recognized as a float, so recognize it as an integer and then convert to float
               do { i<-integer; return(fromIntegral i) } 
 
+lexer :: P.TokenParser a
 lexer = P.makeTokenParser emptyDef
 
-whiteSpace      = P.whiteSpace lexer    
-symbol          = P.symbol lexer    
-integer         = P.integer lexer    
+whiteSpace :: Parser ()
+whiteSpace      = P.whiteSpace lexer
+symbol :: String -> Parser String
+symbol          = P.symbol lexer
+integer :: Parser Integer
+integer         = P.integer lexer
+float :: Parser Double
 float           = P.float lexer
