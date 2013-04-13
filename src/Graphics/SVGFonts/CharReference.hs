@@ -1,22 +1,20 @@
 module Graphics.SVGFonts.CharReference (charsFromFullName, characterStrings) where
 import Control.Applicative ((<|>), many)
 import Data.Attoparsec.Text
-import qualified Data.Map as Map
 import qualified Data.Text as T
-import Data.Maybe (fromJust)
 import Data.List (sortBy)
 
 charRef :: Parser Int
 charRef
     = do
-      try (string (T.pack "&#x"))
+      _ <- try (string (T.pack "&#x"))
       d <- hexadecimal
-      char ';'
+      _ <- char ';'
       return d
  <|>  do
-      try (string (T.pack "&#"))
+      _ <- try (string (T.pack "&#"))
       d <- decimal
-      char ';'
+      _ <- char ';'
       return d
  <|>  do
       c <- anyChar
@@ -31,27 +29,27 @@ fromCharRefs :: T.Text -> [Int]
 fromCharRefs str
   = case (parseOnly charRefs str) of
            Right x -> x
-           Left x -> []
+           Left _ -> []
 
--- | Parsing of xml character references
+-- | Parsing of xml character references.
 --
---   i.e. \"\&\#x2e\;\&\#x2e\;\&\#x2e\;\" is converted into a list of three Chars
+--   I.e. \"\&\#x2e\;\&\#x2e\;\&\#x2e\;\" is converted into a list of three Chars.
 --
---        \"ffb\" is also parsed and converted into three Chars (not changing it)
-charsFromFullName :: Maybe String -> String
-charsFromFullName Nothing    = " "
-charsFromFullName (Just str) = map toEnum ( fromCharRefs (T.pack str) )
+--        \"ffb\" is also parsed and converted into three Chars (not changing it).
+charsFromFullName :: String -> String
+charsFromFullName str = map toEnum ( fromCharRefs (T.pack str) )
 
 
--- | A string defines a glyph, i.e. the ligature \"ffi\" is a string that defines the ligature glyph ffi
+-- | A string represents a glyph, i.e. the ligature \"ffi\" is a string that represents the ligature glyph ffi
 characterStrings :: String -> [String] -> [T.Text]
 characterStrings str ligs | null ligs = map ((T.pack).(\x->[x])) str
                           | otherwise = case parseOnly myParser (T.pack str)
                                            of Right x -> x
-                                              Left  x -> []
+                                              Left  _ -> []
   where myParser = many (try ligatures <|> charToText)
         ligatures = buildChain $ sortBy -- sort so that the longest ligatures come first, i.e. "ffi", "ff", ..
                                  (\x y -> compare (length y) (length x)) $ ligs
+        buildChain []     = string (T.pack "") -- will never be called, just to get rid of the warning message
         buildChain [x]    = parseLigature x -- try to parse with the first parsers in the chain first
         buildChain (x:xs) = try (parseLigature x) <|> buildChain xs
         parseLigature x = string (T.pack x)

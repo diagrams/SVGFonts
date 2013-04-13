@@ -94,8 +94,8 @@ pathElement = do{ whiteSpace;
               do{ symbol "q";  l <- many1 tupel4; return (map (\x-> Q_rel x) l) } <|>
               do{ symbol "T";  l <- many1 tupel2; return (map (\x-> T_abs x) l) } <|>
               do{ symbol "t";  l <- many1 tupel2; return (map (\x-> T_rel x) l) } <|>
-              do{ symbol "A";  l <- many1 tupel2; return (map (\x-> A_abs) l) } <|> -- not used
-              do{ symbol "a";  l <- many1 tupel2; return (map (\x-> A_rel) l) }     -- not used
+              do{ symbol "A";  l <- many1 tupel2; return (map (\_-> A_abs) l) } <|> -- not used
+              do{ symbol "a";  l <- many1 tupel2; return (map (\_-> A_rel) l) }     -- not used
             }
 
 comma :: Parser ()
@@ -119,6 +119,7 @@ tupel6 = do{ x1 <- myfloat; comma; y1 <- myfloat; spaces;
              return (realToFrac x1, realToFrac y1, realToFrac x2, realToFrac y2, realToFrac x, realToFrac y)
            }
 
+myfloat :: Parser Double
 myfloat = try (do{ symbol "-"; n <- float; return (negate n) }) <|>
           try float <|> -- 0 is not recognized as a float, so recognize it as an integer and then convert to float
               do { i<-integer; return(fromIntegral i) } 

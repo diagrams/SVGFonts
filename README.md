@@ -13,9 +13,10 @@ Bitstream.
 Complete implementation of the features that fontforge produces (but
 not the complete SVG format):
 
-* Kerning (i.e. the two characters in "VA" have a shorter distance than in "VV") 
+* Kerning (e.g. the two characters in "VA" have a shorter distance than in "VV") 
 * Unicode 
 * Ligatures 
+* Text boxes with syntax highlighting
 
 XML speed issues can be solved by trimming the svg file to only those
 characters that are used (or maybe binary xml one day)
