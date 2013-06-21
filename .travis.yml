@@ -7,7 +7,7 @@ before_install:
   - cabal install diagrams-core/ diagrams-lib/ --constraint='mtl >= 2.1'
   - cd ..
 install:
-  - cabal install --only-dependencies --enable-tests --constraint='mtl >= 2.1' -v3
+  - cabal install --only-dependencies --enable-tests --constraint='mtl >= 2.1'
 notifications:
   irc:
     channels:
