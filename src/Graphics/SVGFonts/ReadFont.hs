@@ -389,10 +389,10 @@ outlMap str = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
   outlines ch = mconcat $ commandsToTrails (commands ch (sel1 fontD)) [] zeroV zeroV zeroV
   fontD = openFont str
 
-commandsToTrails :: [PathCommand] -> [Segment R2] -> R2 -> R2 -> R2 -> [Path R2]
+commandsToTrails :: [PathCommand] -> [Segment Closed R2] -> R2 -> R2 -> R2 -> [Path R2]
 commandsToTrails [] _ _ _ _ = []
 commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of the last segment
-      | isNothing nextSegment = (translate beginPoint (pathFromTrail . close $ fromSegments segments)) :
+      | isNothing nextSegment = (translate beginPoint (pathFromTrail . wrapTrail  . closeLine $ lineFromSegments segments)) :
                   ( commandsToTrails cs [] (l ^+^ offs) (contr c) (beginP c) ) -- one outline completed
       | otherwise = commandsToTrails cs (segments ++ [fromJust nextSegment])
                                            (l ^+^ offs) (contr c) (beginP c)   -- work on outline
