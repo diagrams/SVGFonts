@@ -4,10 +4,10 @@ before_install:
   - git clone --quiet git://github.com/diagrams/diagrams-core.git diagrams/diagrams-core
   - git clone --quiet git://github.com/diagrams/diagrams-lib.git diagrams/diagrams-lib
   - cd diagrams
-  - cabal install diagrams-core/ diagrams-lib/
+  - cabal install diagrams-core/ diagrams-lib/ --constraint='mtl >= 2.1'
   - cd ..
 install:
-  - cabal install --only-dependencies --enable-tests -v3
+  - cabal install --only-dependencies --enable-tests --constraint='mtl >= 2.1' -v3
 notifications:
   irc:
     channels:
