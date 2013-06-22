@@ -29,16 +29,11 @@ instance Default TextOpts where
 
 -- | A short version of textSVG' with standard values. The Double value is the height.
 --
--- @
--- \{-\# LANGUAGE NoMonomorphismRestriction \#-\}
--- 
---import Diagrams.Prelude
---import Diagrams.Backend.SVG.CmdLine
---import Graphics.SVGFonts.ReadFont
--- 
---main = defaultMain (textSVG \"Hello World\" 1)
--- @
+-- > import Graphics.SVGFonts
+-- >
+-- > textSVGExample = stroke $ textSVG "Hello World" 1
 --
+-- <<diagrams/textSVGExample.svg#diagram=textSVGExample&width=300>>
 textSVG :: String -> Double -> Path R2
 textSVG t h = textSVG' with { txt = t, textHeight = h }
 
@@ -52,26 +47,17 @@ data TextOpts = TextOpts
                 , textHeight :: Double
                 }
 
--- > import Graphics.SVGFonts.ReadFont
+-- | The origin is at the center of the text and the boundaries are
+--   given by the outlines of the chars.
+--
+-- > import Graphics.SVGFonts
+-- >
 -- > text' t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False 1 1 )
 -- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
+-- >
 -- > textPic0 = (text' "Hello World") # showOrigin
-
--- | The origin is at the center of the text and the boundaries are given by the outlines of the chars.
 --
--- @
--- \{-\# LANGUAGE NoMonomorphismRestriction \#-\}
--- 
---import Diagrams.Prelude
---import Diagrams.Backend.SVG.CmdLine
---import Graphics.SVGFonts.ReadFont
--- 
---main = defaultMain (text' \"Hello World\")
---text' t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False 1 1 )
---          \# fc blue \# lc blue \# bg lightgrey \# fillRule EvenOdd \# showOrigin
--- @
---
---   <<diagrams/textPic0.svg#diagram=textPic0&width=300>>
+-- <<diagrams/textPic0.svg#diagram=textPic0&width=300>>
 textSVG' :: TextOpts -> Path R2
 textSVG' to =
   case mode to of
@@ -100,30 +86,19 @@ textSVG' to =
     ligatures = ((filter ((>1).length)).(Map.keys).sel1) fontD
     str = map T.unpack $ characterStrings (txt to) ligatures
 
--- > import Graphics.SVGFonts.ReadFont
--- > text'' t = (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1 )
--- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
--- > textPic1 = text'' "Hello World"
-
--- | The origin is at the left end of the baseline of of the text and the boundaries 
+-- | The origin is at the left end of the baseline of of the text and the boundaries
 -- are given by the bounding box of the Font. This is best for combining Text of different
 -- fonts and for several lines of text.
 -- As you can see you can also underline text by setting underline to True.
 --
--- @
--- \{-\# LANGUAGE NoMonomorphismRestriction \#-\}
--- 
---import Diagrams.Prelude
---import Diagrams.Backend.SVG.CmdLine
---import Graphics.SVGFonts.ReadFont
--- 
---main = defaultMain (text'' \"Hello World\")
+-- > import Graphics.SVGFonts
+-- >
+-- > text'' t = (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1 )
+-- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
+-- >
+-- > textPic1 = text'' "Hello World"
 --
---text'' t = (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1 )
---           \# fc blue \# lc blue \# bg lightgrey \# fillRule EvenOdd \# showOrigin
--- @
---
---   <<diagrams/textPic1.svg#diagram=textPic1&width=300>>
+-- <<diagrams/textPic1.svg#diagram=textPic1&width=300>>
 textSVG_ :: forall b . Renderable (Path R2) b => TextOpts -> QDiagram b R2 Any
 textSVG_ to =
   case mode to of
@@ -157,7 +132,7 @@ textSVG_ to =
 
 -- | This type contains everything that a typical SVG font file produced by fontforge contains.
 --
--- (SvgGlyph, Kern, bbox-string, filename, (underlinePos, underlineThickness), 
+-- (SvgGlyph, Kern, bbox-string, filename, (underlinePos, underlineThickness),
 --   (fontHadv, fontFamily, fontWeight, fontStretch, unitsPerEm, panose, ascent, descent, xHeight, capHeight, stemh, stemv, unicodeRange) )
 --
 type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
@@ -220,7 +195,7 @@ openFont file = ( Map.fromList glyphs,
     ks          = map (fromMaybe "") $ map (findAttr (unqual "k"))   kernings
     kAr     = V.fromList (map read ks)
 
-    transformChars chars = Map.fromList $ map ch $ multiSet $ 
+    transformChars chars = Map.fromList $ map ch $ multiSet $
                                           map (\(x,y) -> (x,[y])) $ sort fst $ concat $ index chars
     ch (x,y) | null x = ("",y)
              | otherwise = (x,y)
@@ -397,7 +372,7 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
       | otherwise = commandsToTrails cs (segments ++ [fromJust nextSegment])
                                            (l ^+^ offs) (contr c) (beginP c)   -- work on outline
   where nextSegment = go c
-        offs | isJust nextSegment 
+        offs | isJust nextSegment
                = segOffset (fromJust nextSegment)
              | otherwise = zeroV
         (x0,y0) = unr2 offs

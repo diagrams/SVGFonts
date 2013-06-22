@@ -71,6 +71,7 @@ Library
         vector-space,
         xml
     exposed-modules:
+        Graphics.SVGFonts
         Graphics.SVGFonts.ReadFont
         Graphics.SVGFonts.CharReference
         Graphics.SVGFonts.ReadPath
