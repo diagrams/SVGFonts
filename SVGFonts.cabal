@@ -1,27 +1,27 @@
 Name:             SVGFonts
 Version:          1.2.1
 Synopsis:         Fonts from the SVG-Font format
-Description:      Native font support for the Diagrams library. The SVG-Font format is easy to parse
+Description:      Native font support for the diagrams framework (<http://projects.haskell.org/diagrams/>). Note that this package can be used with any diagrams backend, not just the SVG backend.  The SVG-tont format is easy to parse
                   and was therefore chosen for a font library completely written in Haskell.
                   .
-                  You can convert your own font to SVG with <http://fontforge.sourceforge.net/> or use the included LinLibertine, Bitstream
+                  You can convert your own font to SVG with <http://fontforge.sourceforge.net/>, or use the included LinLibertine and Bitstream fonts.
                   .
-                  Features
+                  Features:
                   .
-                  * Complete implementation of the features that Fontforge produces (but not the complete SVG format)
+                  * Complete implementation of the features that Fontforge produces (though not the complete SVG format)
                   .
-                  * Kerning (i.e. the two characters in \"VA\" have a shorter distance than in \"VV\")
+                  * Kerning (/i.e./ the two characters in \"VA\" are closer than the characters in \"VV\")
                   .
                   * Unicode
                   .
                   * Ligatures
                   .
                   * An example that shows how to do text boxes with syntax highlighting using highlighting-kate:
-                  . http://hackage.haskell.org/package/highlighting-kate-0.5.3.8
+                    <http://hackage.haskell.org/package/highlighting-kate>
                   .
                   XML speed issues can be solved by trimming the svg file to only those characters that are used (or maybe binary xml one day).
-                  . 
-                  Version 1.0 of this library supports texturing which would only make sense in a Diagrams Backend that does rasterization in Haskell.
+                  .
+                  Version 1.0 of this library supports texturing, though this would only sense in a diagrams backend that does rasterization in Haskell.
                   .
                   Example:
                   .
@@ -30,7 +30,6 @@ Description:      Native font support for the Diagrams library. The SVG-Font for
                   > import Diagrams.Prelude
                   > import Diagrams.Backend.Cairo.CmdLine
                   > import Graphics.SVGFonts.ReadFont (textSVG)
-                  >
                   >
                   > main = defaultMain (text' "Hello World")
                   >
@@ -76,4 +75,3 @@ Library
         Graphics.SVGFonts.CharReference
         Graphics.SVGFonts.ReadPath
     default-language: Haskell2010
-
