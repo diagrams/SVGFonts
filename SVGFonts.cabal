@@ -60,7 +60,7 @@ Library
         attoparsec,
         base == 4.*,
         containers >= 0.4 && < 0.6,
-        data-default,
+        data-default-class < 0.1,
         diagrams-lib >= 0.6,
         directory >= 1.1,
         parsec,
