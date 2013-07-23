@@ -4,7 +4,7 @@ module Graphics.SVGFonts.ReadFont
 where
 
 import Data.Char (isSpace)
-import Data.Default
+import Data.Default.Class
 import Data.List (intersect,sortBy)
 import Data.List.Split (splitOn, splitWhen)
 import Data.Maybe (fromMaybe, fromJust, isJust, isNothing, maybeToList, catMaybes)
@@ -136,7 +136,7 @@ textSVG_ to =
 --   (fontHadv, fontFamily, fontWeight, fontStretch, unitsPerEm, panose, ascent, descent, xHeight, capHeight, stemh, stemv, unicodeRange) )
 --
 type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
-                (Double,String,String,String,String,String,String,String,String,String,String,String,String))
+                (Double,String,Double,String,Double,String,Double,Double,Double,Double,Double,Double,String))
 
 -- | Open an SVG-Font File and extract the data
 --
@@ -162,16 +162,16 @@ openFont file = ( Map.fromList glyphs,
     underlineThick = read $ fromMaybe "" $ findAttr (unqual "underline-thickness") fontface
     underlinePos   = read $ fromMaybe "" $ findAttr (unqual "underline-position") fontface
     fontFamily   = read $ fromMaybe "" $ findAttr (unqual "font-family") fontface
-    fontWeight   = read $ fromMaybe "" $ findAttr (unqual "font-weight") fontface
+    fontWeight   = fromJust $ fmap read $ findAttr (unqual "font-weight") fontface
     fontStretch   = read $ fromMaybe "" $ findAttr (unqual "font-stretch") fontface
-    unitsPerEm   = read $ fromMaybe "" $ findAttr (unqual "units-per-em") fontface
+    unitsPerEm   = fromJust $ fmap read $ findAttr (unqual "units-per-em") fontface
     panose     = read $ fromMaybe "" $ findAttr (unqual "panose") fontface
-    ascent    = read $ fromMaybe "" $ findAttr (unqual "ascent") fontface
-    descent   = read $ fromMaybe "" $ findAttr (unqual "descent") fontface
-    xHeight   = read $ fromMaybe "" $ findAttr (unqual "xHeight") fontface
-    capHeight = read $ fromMaybe "" $ findAttr (unqual "capHeight") fontface
-    stemh = read $ fromMaybe "" $ findAttr (unqual "stemh") fontface
-    stemv = read $ fromMaybe "" $ findAttr (unqual "stemv") fontface
+    ascent    = fromJust $ fmap read $ findAttr (unqual "ascent") fontface
+    descent   = fromJust $ fmap read $ findAttr (unqual "descent") fontface
+    xHeight   = fromJust $ fmap read $ findAttr (unqual "xHeight") fontface
+    capHeight = fromJust $ fmap read $ findAttr (unqual "capHeight") fontface
+    stemh = fromJust $ fmap read $ findAttr (unqual "stemh") fontface
+    stemv = fromJust $ fmap read $ findAttr (unqual "stemv") fontface
     unicodeRange = read $ fromMaybe "" $ findAttr (unqual "unicode-range") fontface
 
     glyphElements = findChildren (unqual "glyph") fontElement
