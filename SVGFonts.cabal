@@ -46,7 +46,7 @@ build-type:       Custom
 Cabal-Version:    >=1.10
 
 data-files: fonts/*.svg
-extra-source-files: diagrams/*
+extra-source-files: diagrams/*.svg
 
 source-repository head
   type: git
