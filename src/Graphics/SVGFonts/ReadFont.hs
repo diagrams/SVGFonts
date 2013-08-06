@@ -164,7 +164,13 @@ data FontData = FontData
 openFont :: FilePath -> FontData
 openFont file = FontData 
   { fontDataGlyphs      = Map.fromList glyphs
-  , fontDataKerning     = (transformChars u1s, transformChars u2s, transformChars g1s, transformChars g2s, kAr)
+  , fontDataKerning     = Kern
+    { kernU1S = transformChars u1s
+    , kernU2S = transformChars u2s
+    , kernG1S = transformChars g1s
+    , kernG2S = transformChars g2s
+    , kernK = kAr
+    }
   , fontDataBoundingBox = parsedBBox
   , fontDataFileName    = fname file
   , fontDataUnderlinePos       = fontface `readAttr` "underline-position"
@@ -273,18 +279,21 @@ hadv ch fontD | isJust char = sel2 (fromJust char)
 -- Now the g2s are converted in the same way as the g1s.
 -- Whenever two consecutive chars are being printed try to find an
 -- intersection of the list assigned to the first char and second char
-type Kern = ( Map.Map String [Int],
-              Map.Map String [Int],
-              Map.Map String [Int],
-              Map.Map String [Int], Vector Double ) -- ^ u1s, u2s, g1s, g2s, k
+data Kern = Kern
+  { kernU1S :: Map.Map String [Int]
+  , kernU2S :: Map.Map String [Int]
+  , kernG1S :: Map.Map String [Int]
+  , kernG2S :: Map.Map String [Int]
+  , kernK   :: Vector Double
+  } -- ^ u1s, u2s, g1s, g2s, k
 
 -- | Change the horizontal advance of two consective chars (kerning)
 kernAdvance :: String -> String -> Kern -> Bool -> Double
-kernAdvance ch0 ch1 kern u |     u && not (null s0) = (sel5 kern) V.! (head s0)
-                           | not u && not (null s1) = (sel5 kern) V.! (head s1)
+kernAdvance ch0 ch1 kern u |     u && not (null s0) = (kernK kern) V.! (head s0)
+                           | not u && not (null s1) = (kernK kern) V.! (head s1)
                            | otherwise = 0
-  where s0 = intersect (s sel1 ch0) (s sel2 ch1)
-        s1 = intersect (s sel3 ch0) (s sel4 ch1)
+  where s0 = intersect (s kernU1S ch0) (s kernU2S ch1)
+        s1 = intersect (s kernG1S ch0) (s kernG2S ch1)
         s sel ch = concat (maybeToList (Map.lookup ch (sel kern)))
 
 type OutlineMap =  Map.Map String (Path R2)
