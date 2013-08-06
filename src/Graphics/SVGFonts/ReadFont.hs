@@ -83,7 +83,7 @@ textSVG' to =
                        (zeroV,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
-    ligatures = ((filter ((>1).length)).(Map.keys).sel1) fontD
+    ligatures = ((filter ((>1) . length)) . (Map.keys) . fontDataGlyphs) fontD
     str = map T.unpack $ characterStrings (txt to) ligatures
 
 -- | The origin is at the left end of the baseline of of the text and the boundaries
@@ -127,7 +127,7 @@ textSVG_ to =
                        (zeroV,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
-    ligatures = ((filter ((>1).length)).(Map.keys).sel1) fontD
+    ligatures = ((filter ((>1) . length)) . (Map.keys) . fontDataGlyphs) fontD
     str = map T.unpack $ characterStrings (txt to) ligatures
 
 -- | This type contains everything that a typical SVG font file produced by fontforge contains.
@@ -135,21 +135,58 @@ textSVG_ to =
 -- (SvgGlyph, Kern, bbox-string, filename, (underlinePos, underlineThickness),
 --   (fontHadv, fontFamily, fontWeight, fontStretch, unitsPerEm, panose, ascent, descent, xHeight, capHeight, stemh, stemv, unicodeRange) )
 --
-type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
-                (Double,String,Double,String,Double,String,Double,Double,Double,Double,Double,Double,String))
+data FontData = FontData 
+  { fontDataGlyphs :: SvgGlyphs
+  , fontDataKerning :: Kern
+  , fontDataBoundingBox :: [Double]
+  , fontDataFileName :: String
+  , fontDataUnderlinePos :: Double
+  , fontDataUnderlineThickness :: Double
+  , fontDataHorizontalAdvance :: Double
+  , fontDataFamily :: String
+  , fontDataWeight :: Double
+  , fontDataStretch :: String
+  , fontDataUnitsPerEm :: Double
+  , fontDataPanose :: String
+  , fontDataAscent :: Double
+  , fontDataDescent :: Double
+  , fontDataXHeight :: Double
+  , fontDataCapHeight :: Double
+  , fontDataHorizontalStem :: Double
+  , fontDataVerticalStem :: Double
+  , fontDataUnicodeRange :: Double
+  }
+--type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
+--                (Double,String,Double,String,Double,String,Double,Double,Double,Double,Double,Double,String))
 
 -- | Open an SVG-Font File and extract the data
 --
 openFont :: FilePath -> FontData
-openFont file = ( Map.fromList glyphs,
-                  (transformChars u1s, transformChars u2s, transformChars g1s, transformChars g2s, kAr), -- kerning data
-                  parsedBBox,
-                  fname file,
-                  (underlinePos, underlineThick),
-                  (fontHadv, fontFamily, fontWeight, fontStretch, unitsPerEm, panose,
-                   ascent, descent, xHeight, capHeight, stemh, stemv, unicodeRange)
-                )
+openFont file = FontData 
+  { fontDataGlyphs      = Map.fromList glyphs
+  , fontDataKerning     = (transformChars u1s, transformChars u2s, transformChars g1s, transformChars g2s, kAr)
+  , fontDataBoundingBox = parsedBBox
+  , fontDataFileName    = fname file
+  , fontDataUnderlinePos       = underlinePos
+  , fontDataUnderlineThickness = underlineThick
+  , fontDataHorizontalAdvance  = fontHadv
+  , fontDataFamily     = fontFamily
+  , fontDataWeight     = fontface `readAttr` "font-weight"
+  , fontDataStretch    = fontStretch
+  , fontDataUnitsPerEm = fontface `readAttr` "units-per-em"
+  , fontDataPanose     = panose
+  , fontDataAscent     = fontface `readAttr` "ascent"
+  , fontDataDescent    = fontface `readAttr` "descent"
+  , fontDataXHeight    = fontface `readAttr` "x-height"
+  , fontDataCapHeight  = fontface `readAttr` "cap-height"
+  , fontDataHorizontalStem = fontface `readAttr` "stemh"
+  , fontDataVerticalStem   = fontface `readAttr` "stemv"
+  , fontDataUnicodeRange = unicodeRange
+  }
   where
+    readAttr :: (Read a) => Element -> String -> a
+    readAttr element attr = fromJust $ fmap read $ findAttr (unqual attr) element
+    
     xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
 
     fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
@@ -162,16 +199,8 @@ openFont file = ( Map.fromList glyphs,
     underlineThick = read $ fromMaybe "" $ findAttr (unqual "underline-thickness") fontface
     underlinePos   = read $ fromMaybe "" $ findAttr (unqual "underline-position") fontface
     fontFamily   = read $ fromMaybe "" $ findAttr (unqual "font-family") fontface
-    fontWeight   = fromJust $ fmap read $ findAttr (unqual "font-weight") fontface
     fontStretch   = read $ fromMaybe "" $ findAttr (unqual "font-stretch") fontface
-    unitsPerEm   = fromJust $ fmap read $ findAttr (unqual "units-per-em") fontface
     panose     = read $ fromMaybe "" $ findAttr (unqual "panose") fontface
-    ascent    = fromJust $ fmap read $ findAttr (unqual "ascent") fontface
-    descent   = fromJust $ fmap read $ findAttr (unqual "descent") fontface
-    xHeight   = fromJust $ fmap read $ findAttr (unqual "x-height") fontface
-    capHeight = fromJust $ fmap read $ findAttr (unqual "cap-height") fontface
-    stemh = fromJust $ fmap read $ findAttr (unqual "stemh") fontface
-    stemv = fromJust $ fmap read $ findAttr (unqual "stemv") fontface
     unicodeRange = read $ fromMaybe "" $ findAttr (unqual "unicode-range") fontface
 
     glyphElements = findChildren (unqual "glyph") fontElement
@@ -214,14 +243,14 @@ openFont file = ( Map.fromList glyphs,
     fname f = last $ init $ concat (map (splitOn "/") (splitOn "." f))
 
 
-type SvgGlyph = Map.Map String (String, Double, String) -- ^ \[ (unicode, (glyph_name, horiz_advance, ds)) \]
+type SvgGlyphs = Map.Map String (String, Double, String) -- ^ \[ (unicode, (glyph_name, horiz_advance, ds)) \]
 
 -- | Horizontal advances of characters inside a string.
 -- A character is stored with a string (because of ligatures like \"ffi\").
 horizontalAdvances :: [String] -> FontData -> Bool -> [Double]
 horizontalAdvances []          _  _       = []
 horizontalAdvances [ch]        fd _       = [hadv ch fd]
-horizontalAdvances (ch0:ch1:s) fd kerning = ((hadv ch0 fd) - (ka (sel2 fd))) :
+horizontalAdvances (ch0:ch1:s) fd kerning = ((hadv ch0 fd) - (ka (fontDataKerning fd))) :
                                             (horizontalAdvances (ch1:s) fd kerning)
   where ka kern | kerning   = (kernAdvance ch0 ch1 kern True) + (kernAdvance ch0 ch1 kern False)
                 | otherwise = 0
@@ -229,8 +258,8 @@ horizontalAdvances (ch0:ch1:s) fd kerning = ((hadv ch0 fd) - (ka (sel2 fd))) :
 -- | Horizontal advance of a character consisting of its width and spacing, extracted out of the font data
 hadv :: String -> FontData -> Double
 hadv ch fontD | isJust char = sel2 (fromJust char)
-              | otherwise   = sel1 (sel6 fontD)
-  where char = (Map.lookup ch (sel1 fontD))
+              | otherwise   = fontDataHorizontalAdvance fontD
+  where char = (Map.lookup ch (fontDataGlyphs fontD))
 
 -- | See <http://www.w3.org/TR/SVG/fonts.html#KernElements>
 --
@@ -338,30 +367,30 @@ ro = unsafePerformIO . getDataFileName
 -- | Difference between highest and lowest y-value of bounding box
 bbox_dy :: FontData -> Double
 bbox_dy fontData = (bbox!!3) - (bbox!!1)
-  where bbox = sel3 fontData -- bbox = [lowest x, lowest y, highest x, highest y]
+  where bbox = fontDataBoundingBox fontData -- bbox = [lowest x, lowest y, highest x, highest y]
 
 -- | Lowest x-value of bounding box
 bbox_lx :: FontData -> Double
-bbox_lx fontData   = (sel3 fontData) !! 0
+bbox_lx fontData   = (fontDataBoundingBox fontData) !! 0
 
 -- | Lowest y-value of bounding box
 bbox_ly :: FontData -> Double
-bbox_ly fontData   = (sel3 fontData) !! 1
+bbox_ly fontData   = (fontDataBoundingBox fontData) !! 1
 
 -- | Position of the underline bar
 underlinePosition :: FontData -> Double
-underlinePosition fontData = fst $ sel5 fontData
+underlinePosition fontData = fontDataUnderlinePos fontData
 
 -- | Thickness of the underline bar
 underlineThickness :: FontData -> Double
-underlineThickness fontData = snd $ sel5 fontData
+underlineThickness fontData = fontDataUnderlineThickness fontData
 
 -- | Generate Font Data and a Map from chars to outline paths
 outlMap :: String -> (FontData, OutlineMap)
 outlMap str = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
   where
-  allUnicodes = Map.keys (sel1 fontD)
-  outlines ch = mconcat $ commandsToTrails (commands ch (sel1 fontD)) [] zeroV zeroV zeroV
+  allUnicodes = Map.keys (fontDataGlyphs fontD)
+  outlines ch = mconcat $ commandsToTrails (commands ch (fontDataGlyphs fontD)) [] zeroV zeroV zeroV
   fontD = openFont str
 
 commandsToTrails :: [PathCommand] -> [Segment Closed R2] -> R2 -> R2 -> R2 -> [Path R2]
@@ -423,7 +452,7 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
         go ( A_abs ) = Nothing
         go ( A_rel ) = Nothing
 
-commands :: String -> SvgGlyph -> [PathCommand]
+commands :: String -> SvgGlyphs -> [PathCommand]
 commands ch glyph | isJust element = unsafePerformIO $ pathFromString $ sel3 $ fromJust element
                   | otherwise      = []
   where element = Map.lookup ch glyph
