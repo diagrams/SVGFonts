@@ -45,7 +45,7 @@ data TextOpts = TextOpts
                 , underline :: Bool
                 , textWidth :: Double
                 , textHeight :: Double
-                }
+                } deriving Show
 
 -- | The origin is at the center of the text and the boundaries are
 --   given by the outlines of the chars.
@@ -155,7 +155,7 @@ data FontData = FontData
   , fontDataHorizontalStem :: Double
   , fontDataVerticalStem :: Double
   , fontDataUnicodeRange :: Double
-  }
+  } deriving Show
 --type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
 --                (Double,String,Double,String,Double,String,Double,Double,Double,Double,Double,Double,String))
 
@@ -285,7 +285,7 @@ data Kern = Kern
   , kernG1S :: Map.Map String [Int]
   , kernG2S :: Map.Map String [Int]
   , kernK   :: Vector Double
-  } -- ^ u1s, u2s, g1s, g2s, k
+  } deriving Show -- ^ u1s, u2s, g1s, g2s, k
 
 -- | Change the horizontal advance of two consective chars (kerning)
 kernAdvance :: String -> String -> Kern -> Bool -> Double
@@ -332,6 +332,7 @@ data Mode = INSIDE_H  -- ^ The string fills the complete height, width adjusted.
                       -- This feature is experimental and might change in the future.
                       --
                       -- <<diagrams/textWH.svg#diagram=textWH&width=400>>
+           deriving Show
 
 mWH :: Mode -> Bool
 mWH INSIDE_WH = True
@@ -360,6 +361,7 @@ data Spacing = HADV -- ^ Every glyph has a unique horiz. advance
                     -- As You can see there is less space between \"A\" and \"V\":
                     --
                     --   <<diagrams/textKern.svg#diagram=textKern&width=400>>
+             deriving Show
 
 isKern :: Spacing -> Bool
 isKern KERN = True
