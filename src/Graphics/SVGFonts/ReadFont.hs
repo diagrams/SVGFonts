@@ -167,8 +167,8 @@ openFont file = FontData
   , fontDataKerning     = (transformChars u1s, transformChars u2s, transformChars g1s, transformChars g2s, kAr)
   , fontDataBoundingBox = parsedBBox
   , fontDataFileName    = fname file
-  , fontDataUnderlinePos       = underlinePos
-  , fontDataUnderlineThickness = underlineThick
+  , fontDataUnderlinePos       = fontface `readAttr` "underline-position"
+  , fontDataUnderlineThickness = fontface `readAttr` "underline-thickness"
   , fontDataHorizontalAdvance  = fontHadv
   , fontDataFamily     = fontFamily
   , fontDataWeight     = fontface `readAttr` "font-weight"
@@ -196,11 +196,9 @@ openFont file = FontData
     bbox     = fromMaybe "" $ findAttr (unqual "bbox") fontface
     parsedBBox :: [Double]
     parsedBBox = map read $ splitWhen isSpace bbox
-    underlineThick = read $ fromMaybe "" $ findAttr (unqual "underline-thickness") fontface
-    underlinePos   = read $ fromMaybe "" $ findAttr (unqual "underline-position") fontface
     fontFamily   = read $ fromMaybe "" $ findAttr (unqual "font-family") fontface
     fontStretch   = read $ fromMaybe "" $ findAttr (unqual "font-stretch") fontface
-    panose     = read $ fromMaybe "" $ findAttr (unqual "panose") fontface
+    panose     = read $ fromMaybe "" $ findAttr (unqual "panose-1") fontface
     unicodeRange = read $ fromMaybe "" $ findAttr (unqual "unicode-range") fontface
 
     glyphElements = findChildren (unqual "glyph") fontElement
