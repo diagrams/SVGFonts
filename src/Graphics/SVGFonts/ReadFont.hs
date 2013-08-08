@@ -154,7 +154,7 @@ data FontData = FontData
   , fontDataCapHeight :: Double
   , fontDataHorizontalStem :: Double
   , fontDataVerticalStem :: Double
-  , fontDataUnicodeRange :: Double
+  , fontDataUnicodeRange :: String
   } deriving Show
 --type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
 --                (Double,String,Double,String,Double,String,Double,Double,Double,Double,Double,Double,String))
@@ -202,10 +202,10 @@ openFont file = FontData
     bbox     = fromMaybe "" $ findAttr (unqual "bbox") fontface
     parsedBBox :: [Double]
     parsedBBox = map read $ splitWhen isSpace bbox
-    fontFamily   = read $ fromMaybe "" $ findAttr (unqual "font-family") fontface
-    fontStretch   = read $ fromMaybe "" $ findAttr (unqual "font-stretch") fontface
-    panose     = read $ fromMaybe "" $ findAttr (unqual "panose-1") fontface
-    unicodeRange = read $ fromMaybe "" $ findAttr (unqual "unicode-range") fontface
+    fontFamily   = fromMaybe "" $ findAttr (unqual "font-family") fontface
+    fontStretch   = fromMaybe "" $ findAttr (unqual "font-stretch") fontface
+    panose     = fromMaybe "" $ findAttr (unqual "panose-1") fontface
+    unicodeRange = fromMaybe "" $ findAttr (unqual "unicode-range") fontface
 
     glyphElements = findChildren (unqual "glyph") fontElement
     kernings = findChildren (unqual "hkern") fontElement
