@@ -462,7 +462,12 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
         go ( A_rel ) = Nothing
 
 commands :: String -> SvgGlyphs -> [PathCommand]
-commands ch glyph | isJust element = unsafePerformIO $ pathFromString $ sel3 $ fromJust element
+commands ch glyph | isJust element = case pathFromString (sel3 $ fromJust element) of
+                                       Left err -> unsafePerformIO $ do
+                                         putStr "parse error at "
+                                         print err
+                                         return []
+                                       Right p -> p
                   | otherwise      = []
   where element = Map.lookup ch glyph
 
