@@ -152,8 +152,10 @@ data FontData = FontData
   , fontDataDescent :: Double
   , fontDataXHeight :: Double
   , fontDataCapHeight :: Double
-  , fontDataHorizontalStem :: Double
-  , fontDataVerticalStem :: Double
+  , fontDataHorizontalStem :: Maybe Double 
+    -- ^ This data is not available in some fonts (e.g. Source Code Pro)
+  , fontDataVerticalStem :: Maybe Double 
+    -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataUnicodeRange :: String
   } deriving Show
 --type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
@@ -185,13 +187,16 @@ openFont file = FontData
   , fontDataDescent    = fontface `readAttr` "descent"
   , fontDataXHeight    = fontface `readAttr` "x-height"
   , fontDataCapHeight  = fontface `readAttr` "cap-height"
-  , fontDataHorizontalStem = fontface `readAttr` "stemh"
-  , fontDataVerticalStem   = fontface `readAttr` "stemv"
+  , fontDataHorizontalStem = fontface `readAttrM` "stemh"
+  , fontDataVerticalStem   = fontface `readAttrM` "stemv"
   , fontDataUnicodeRange = unicodeRange
   }
   where
     readAttr :: (Read a) => Element -> String -> a
     readAttr element attr = fromJust $ fmap read $ findAttr (unqual attr) element
+    
+    readAttrM :: (Read a) => Element -> String -> Maybe a
+    readAttrM element attr = fmap read $ findAttr (unqual attr) element
     
     xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
 
