@@ -50,7 +50,7 @@ extra-source-files: diagrams/*.svg
 
 source-repository head
   type: git
-  location: https://github.com/tkvogt/SVGFonts.git
+  location: https://github.com/diagrams/SVGFonts.git
 
 Library
     hs-source-dirs: src
