@@ -1,3 +1,8 @@
+1.3.0.1 (12 August 2013)
+------------------------
+
+- fix repo location in .cabal file
+
 1.3: 9 August 2013
 ------------------
 
