@@ -285,7 +285,7 @@ data Kern = Kern
   , kernG1S :: Map.Map String [Int]
   , kernG2S :: Map.Map String [Int]
   , kernK   :: Vector Double
-  } deriving Show -- ^ u1s, u2s, g1s, g2s, k
+  } deriving Show
 
 -- | Change the horizontal advance of two consective chars (kerning)
 kernAdvance :: String -> String -> Kern -> Bool -> Double
