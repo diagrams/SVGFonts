@@ -55,15 +55,10 @@ data PathCommand =
   deriving Show
 
 -- | Convert a SVG path string into a list of commands
-pathFromString :: String -> IO [PathCommand]
-pathFromString str
-  = do{ case (parse path "" str) of
-           Left err -> do{ putStr "parse error at "
-                         ; print err
-                         ; return []
-                         }
-           Right x  -> return x
-      }
+pathFromString :: String -> Either String [PathCommand]
+pathFromString str = case parse path "" str of
+  Left  err -> Left  (show err)
+  Right p   -> Right p
 
 spaces :: Parser ()
 spaces = skipMany space
