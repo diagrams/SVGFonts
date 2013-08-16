@@ -326,8 +326,8 @@ data Mode = INSIDE_H  -- ^ The string fills the complete height, width adjusted.
                       -- The result can be smaller or bigger than the bounding box:
                       --
                       --   <<diagrams/textH.svg#diagram=textH&width=400>>
-          | INSIDE_W  -- ^ The string fills the complete width, heigth adjusted.
-                      -- Maybe useful for single words in a diagram or headlines.
+          | INSIDE_W  -- ^ The string fills the complete width, height adjusted.
+                      -- May be useful for single words in a diagram, or for headlines.
                       -- The result can be smaller or bigger than the bounding box:
                       --
                       -- <<diagrams/textW.svg#diagram=textW&width=400>>
