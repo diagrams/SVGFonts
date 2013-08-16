@@ -484,7 +484,8 @@ bit = outlMap (ro "fonts/Bitstream.svg")
 lin :: (FontData, OutlineMap)
 lin = outlMap (ro "fonts/LinLibertine.svg")
 
--- | Linux Libertine, cut to the most common Characters, smaller file, quicker load time
+-- | Linux Libertine, cut to contain only the most common characters,
+--   resulting in a smaller file and hence a quicker load time.
 lin2 :: (FontData, OutlineMap)
 lin2 = outlMap (ro "fonts/LinLibertineCut.svg")
 
