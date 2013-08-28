@@ -1,7 +1,14 @@
 module Graphics.SVGFonts.WriteFont where 
 
-import Data.String
+import Numeric ( showHex )
+
+import Data.String ( fromString )
+import Data.Char ( ord )
+import Data.List ( intercalate )
 import qualified Data.Set as Set
+import qualified Data.Map as M
+
+import Control.Monad ( forM_ )
 
 import Text.Blaze.Svg11 ((!), toValue)
 import qualified Text.Blaze.Internal as B
@@ -11,8 +18,9 @@ import qualified Text.Blaze.Svg11.Attributes as A
 import Graphics.SVGFonts.ReadFont
 
 makeSvgFont :: (FontData, OutlineMap) -> Set.Set String -> S.Svg
-makeSvgFont (fd, om) gs = do
+makeSvgFont (fd, _) gs = do
   font ! A.horizAdvX horizAdvX $ do
+    -- Font meta information
     S.fontFace ! A.fontFamily fontFamily
                ! A.fontWeight fontWeight
                ! A.fontStretch fontStretch
@@ -28,12 +36,45 @@ makeSvgFont (fd, om) gs = do
                ! A.unicodeRange unicodeRange
                # maybeMaybe A.stemv fontDataHorizontalStem
                # maybeMaybe A.stemh fontDataVerticalStem
-   
+    -- Insert the 'missing-glyph'
+    case M.lookup ".notdef" (fontDataGlyphs fd) of
+      Nothing -> return ()
+      Just (_, _, gPath) -> S.missingGlyph ! A.d (toValue gPath) 
+                                           $ return ()
+    -- Insert all other glyphs
+    let gs' = Set.insert ".notdef" gs
+    forM_ (Set.toList gs') $ \g -> case M.lookup g (fontDataGlyphs fd) of
+      Nothing -> return ()
+      Just (gName, gHAdv, gPath) -> do
+        S.glyph ! A.glyphName (toValue gName)
+                ! A.horizAdvX (toValue gHAdv)
+                ! A.d (toValue gPath) 
+                # maybeUnicode g
+                $ return ()
+
   
   where
-    (#) :: S.Svg -> Maybe S.Attribute -> S.Svg
+    (#) :: (B.Attributable h) => h -> Maybe S.Attribute -> h
     (#) x Nothing = x
     (#) x (Just a) = x ! a
+    
+    unicodeBlacklist :: Set.Set String
+    unicodeBlacklist = Set.fromList 
+      [ ".notdef"
+      , ".null"
+      ]
+    
+    maybeUnicode :: String -> Maybe S.Attribute
+    maybeUnicode [] = Nothing
+    maybeUnicode s | s `Set.member` unicodeBlacklist || length s >= 10 = Nothing
+    maybeUnicode s = Just $ A.unicode $ toValue $ concatMap encodeUnicode s
+    
+    encodeUnicode :: Char -> String
+    encodeUnicode c = 
+      let cOrd = ord c
+      in if cOrd >= 32 && cOrd <= 126 
+            then [c] 
+            else "&#x" ++ (showHex cOrd "")
     
     maybeMaybe :: (S.ToValue a) 
                => (S.AttributeValue -> S.Attribute) -> (FontData -> Maybe a) 
@@ -58,41 +99,8 @@ makeSvgFont (fd, om) gs = do
     descent = toValue $ fontDataDescent fd
     xHeight = toValue $ fontDataXHeight fd
     capHeight = toValue $ fontDataCapHeight fd
-    bbox = toValue $ fontDataFamily fd
+    bbox = toValue $ intercalate " " $ fmap show $ fontDataBoundingBox fd
     underlineT = toValue $ fontDataUnderlineThickness fd
     underlineP = toValue $ fontDataUnderlinePos fd
     unicodeRange = toValue $ fontDataUnicodeRange fd
     
-    
-        {-
-          fontDataBoundingBox = parsedBBox
-  , fontDataFileName    = fname file
-  , fontDataUnderlinePos       = fontface `readAttr` "underline-position"
-  , fontDataUnderlineThickness = fontface `readAttr` "underline-thickness"
-  , fontDataHorizontalAdvance  = fontHadv
-  , fontDataFamily     = fontFamily
-  , fontDataWeight     = fontface `readAttr` "font-weight"
-  , fontDataStretch    = fontStretch
-  , fontDataUnitsPerEm = fontface `readAttr` "units-per-em"
-  , fontDataPanose     = panose
-  , fontDataAscent     = fontface `readAttr` "ascent"
-  , fontDataDescent    = fontface `readAttr` "descent"
-  , fontDataXHeight    = fontface `readAttr` "x-height"
-  , fontDataCapHeight  = fontface `readAttr` "cap-height"
-  , fontDataHorizontalStem = fontface `readAttrM` "stemh"
-  , fontDataVerticalStem   = fontface `readAttrM` "stemv"
-  , fontDataUnicodeRange = unicodeRange
-          
-          font-weight="400"
-    font-stretch="normal"
-    units-per-em="2048"
-    panose-1="2 11 6 9 3 8 4 2 2 4"
-    ascent="1556"
-    descent="-492"
-    x-height="1118"
-    cap-height="1493"
-    bbox="-10 -483 1241 1901"
-    underline-thickness="141"
-    underline-position="-143"
-    unicode-range="U+0020-FB02"
-          -}
