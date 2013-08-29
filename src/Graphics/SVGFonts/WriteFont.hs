@@ -42,7 +42,6 @@ makeSvgFont (fd, _) gs = do
       Just (_, _, gPath) -> S.missingGlyph ! A.d (toValue gPath) 
                                            $ return ()
     -- Insert all other glyphs
-    let gs' = Set.insert ".notdef" gs
     forM_ (Set.toList gs') $ \g -> case M.lookup g (fontDataGlyphs fd) of
       Nothing -> return ()
       Just (gName, gHAdv, gPath) -> do
@@ -51,6 +50,20 @@ makeSvgFont (fd, _) gs = do
                 ! A.d (toValue gPath) 
                 # maybeUnicode g
                 $ return ()
+    let
+    forM_ (fontDataRawKernings fd) $ \(k, g1, g2, u1, u2) -> do
+      let g1' = filter isGlyph g1
+          g2' = filter isGlyph g2
+          u1' = filter isGlyph u1
+          u2' = filter isGlyph u2
+      case (not (null g1') && not (null g2')) || (not (null u1') && not (null u2')) of
+        True -> do
+          S.hkern ! A.k (toValue k)
+                  # maybeString A.g1 (const $ intercalate "," g1')
+                  # maybeString A.g2 (const $ intercalate "," g2')
+                  # maybeString A.u1 (const $ intercalate "," u1')
+                  # maybeString A.u2 (const $ intercalate "," u2')
+        False -> return ()
 
   
   where
@@ -89,6 +102,11 @@ makeSvgFont (fd, _) gs = do
     
     font :: S.Svg -> S.Svg
     font m = B.Parent (fromString "font") (fromString "<font") (fromString "</font>") m
+    
+    isGlyph :: String -> Bool
+    isGlyph g = g `Set.member` gs'
+    
+    gs' = Set.insert ".notdef" gs
     
     horizAdvX = toValue $ fontDataHorizontalAdvance fd
     fontFamily = toValue $ fontDataFamily fd

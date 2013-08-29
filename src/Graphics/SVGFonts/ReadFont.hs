@@ -157,9 +157,9 @@ data FontData = FontData
   , fontDataVerticalStem :: Maybe Double 
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataUnicodeRange :: String
+  , fontDataRawKernings :: [(String, [String], [String], [String], [String])] 
+    -- ^ (k, g1, g2, u1, u2)
   } deriving Show
---type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
---                (Double,String,Double,String,Double,String,Double,Double,Double,Double,Double,Double,String))
 
 -- | Open an SVG-Font File and extract the data
 --
@@ -190,6 +190,7 @@ openFont file = FontData
   , fontDataHorizontalStem = fontface `readAttrM` "stemh"
   , fontDataVerticalStem   = fontface `readAttrM` "stemv"
   , fontDataUnicodeRange = unicodeRange
+  , fontDataRawKernings = rawKerns
   }
   where
     readAttr :: (Read a) => Element -> String -> a
@@ -232,6 +233,15 @@ openFont file = FontData
     g2s         = map (fromMaybe "") $ map (findAttr (unqual "g2"))  kernings
     ks          = map (fromMaybe "") $ map (findAttr (unqual "k"))   kernings
     kAr     = V.fromList (map read ks)
+    
+    rawKerns = fmap getRawKern kernings
+    getRawKern kerning =
+      let u1 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "u1") $ kerning
+          u2 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "u2") $ kerning
+          g1 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "g1") $ kerning
+          g2 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "g2") $ kerning
+          k  = fromMaybe "" $ findAttr (unqual "k") $ kerning
+      in (k, g1, g2, u1, u2)
 
     transformChars chars = Map.fromList $ map ch $ multiSet $
                                           map (\(x,y) -> (x,[y])) $ sort fst $ concat $ index chars
