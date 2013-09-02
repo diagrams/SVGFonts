@@ -142,6 +142,10 @@ data FontData = FontData
   , fontDataFileName :: String
   , fontDataUnderlinePos :: Double
   , fontDataUnderlineThickness :: Double
+  , fontDataOverlinePos :: Maybe Double
+  , fontDataOverlineThickness :: Maybe Double
+  , fontDataStrikethroughPos :: Maybe Double
+  , fontDataStrikethroughThickness :: Maybe Double
   , fontDataHorizontalAdvance :: Double
   , fontDataFamily :: String
   , fontDataStyle :: String
@@ -219,6 +223,10 @@ openFont file = FontData
   , fontDataVAlphabeticBaseline   = fontface `readAttrM` "v-alphabetic"
   , fontDataVMathematicalBaseline = fontface `readAttrM` "v-mathematical"
   , fontDataVHangingBaseline      = fontface `readAttrM` "v-hanging"
+  , fontDataOverlinePos            = fontface `readAttrM` "overline-position"
+  , fontDataOverlineThickness      = fontface `readAttrM` "overline-thickness"
+  , fontDataStrikethroughPos       = fontface `readAttrM` "strikethrough-position"
+  , fontDataStrikethroughThickness = fontface `readAttrM` "strikethrough-thickness"
   }
   where
     readAttr :: (Read a) => Element -> String -> a

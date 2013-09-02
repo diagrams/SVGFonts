@@ -50,6 +50,10 @@ makeSvgFont (fd, _) gs = do
                # maybeMaybe A.vAlphabetic   fontDataVAlphabeticBaseline
                # maybeMaybe A.vMathematical fontDataVMathematicalBaseline
                # maybeMaybe A.vHanging      fontDataVHangingBaseline
+               # maybeMaybe A.overlinePosition  fontDataOverlinePos
+               # maybeMaybe A.overlineThickness fontDataOverlineThickness
+               # maybeMaybe A.strikethroughPosition  fontDataStrikethroughPos
+               # maybeMaybe A.strikethroughThickness fontDataStrikethroughThickness
     -- Insert the 'missing-glyph'
     case M.lookup ".notdef" (fontDataGlyphs fd) of
       Nothing -> return ()
