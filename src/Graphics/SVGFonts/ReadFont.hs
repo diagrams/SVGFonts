@@ -179,19 +179,19 @@ openFont file = FontData
   , fontDataUnderlinePos       = fontface `readAttr` "underline-position"
   , fontDataUnderlineThickness = fontface `readAttr` "underline-thickness"
   , fontDataHorizontalAdvance  = fontHadv
-  , fontDataFamily     = fontFamily
-  , fontDataStyle      = fontStyle
-  , fontDataWeight     = fontWeight
-  , fontDataStretch    = fontStretch
+  , fontDataFamily     = readString fontface "font-family" ""
+  , fontDataStyle      = readString fontface "font-style" "all"
+  , fontDataWeight     = readString fontface "font-weight" "all"
+  , fontDataStretch    = readString fontface "font-stretch" "normal"
   , fontDataUnitsPerEm = fontface `readAttr` "units-per-em"
-  , fontDataPanose     = panose
+  , fontDataPanose     = readString fontface "panose-1" "0 0 0 0 0 0 0 0 0 0"
   , fontDataAscent     = fontface `readAttr` "ascent"
   , fontDataDescent    = fontface `readAttr` "descent"
   , fontDataXHeight    = fontface `readAttr` "x-height"
   , fontDataCapHeight  = fontface `readAttr` "cap-height"
   , fontDataHorizontalStem = fontface `readAttrM` "stemh"
   , fontDataVerticalStem   = fontface `readAttrM` "stemv"
-  , fontDataUnicodeRange = unicodeRange
+  , fontDataUnicodeRange = readString fontface "unicode-range" "U+0-10FFFF"
   , fontDataRawKernings = rawKerns
   }
   where
@@ -201,21 +201,19 @@ openFont file = FontData
     readAttrM :: (Read a) => Element -> String -> Maybe a
     readAttrM element attr = fmap read $ findAttr (unqual attr) element
     
+    -- | @readString e a d@ : @e@ element to read from; @a@ attribute to read; @d@ default value.
+    readString :: Element -> String -> String -> String
+    readString element attr d = fromMaybe d $ findAttr (unqual attr) element
+    
     xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
 
     fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
     fontHadv = fromMaybe ((parsedBBox!!2) - (parsedBBox!!0)) -- BBox is used if there is no "horiz-adv-x" attribute
                          (fmap read (findAttr (unqual "horiz-adv-x") fontElement) )
     fontface = fromJust $ findElement (unqual "font-face") fontElement -- there is always a font-face node
-    bbox     = fromMaybe "" $ findAttr (unqual "bbox") fontface
+    bbox     = readString fontface "bbox" ""
     parsedBBox :: [Double]
     parsedBBox = map read $ splitWhen isSpace bbox
-    fontFamily   = fromMaybe "" $ findAttr (unqual "font-family") fontface
-    fontStyle    = fromMaybe "all" $ findAttr (unqual "font-style") fontface
-    fontStretch   = fromMaybe "normal" $ findAttr (unqual "font-stretch") fontface
-    fontWeight   = fromMaybe "all" $ findAttr (unqual "font-weight") fontface
-    panose     = fromMaybe "" $ findAttr (unqual "panose-1") fontface
-    unicodeRange = fromMaybe "U+0-10FFFF" $ findAttr (unqual "unicode-range") fontface
 
     glyphElements = findChildren (unqual "glyph") fontElement
     kernings = findChildren (unqual "hkern") fontElement
