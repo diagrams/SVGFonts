@@ -40,8 +40,16 @@ makeSvgFont (fd, _) gs = do
                ! A.underlinePosition underlineP
                ! A.unicodeRange unicodeRange
                # maybeMaybe A.widths fontDataWidths
-               # maybeMaybe A.stemv fontDataHorizontalStem
-               # maybeMaybe A.stemh fontDataVerticalStem
+               # maybeMaybe A.stemv  fontDataHorizontalStem
+               # maybeMaybe A.stemh  fontDataVerticalStem
+               # maybeMaybe A.ideographic   fontDataIdeographicBaseline
+               # maybeMaybe A.alphabetic    fontDataAlphabeticBaseline
+               # maybeMaybe A.mathematical  fontDataMathematicalBaseline
+               # maybeMaybe A.hanging       fontDataHangingBaseline
+               # maybeMaybe A.vIdeographic  fontDataVIdeographicBaseline
+               # maybeMaybe A.vAlphabetic   fontDataVAlphabeticBaseline
+               # maybeMaybe A.vMathematical fontDataVMathematicalBaseline
+               # maybeMaybe A.vHanging      fontDataVHangingBaseline
     -- Insert the 'missing-glyph'
     case M.lookup ".notdef" (fontDataGlyphs fd) of
       Nothing -> return ()

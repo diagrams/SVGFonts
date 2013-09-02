@@ -164,6 +164,14 @@ data FontData = FontData
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataUnicodeRange :: String
   , fontDataRawKernings :: [(String, [String], [String], [String], [String])] 
+  , fontDataIdeographicBaseline :: Maybe Double
+  , fontDataAlphabeticBaseline :: Maybe Double
+  , fontDataMathematicalBaseline :: Maybe Double
+  , fontDataHangingBaseline :: Maybe Double
+  , fontDataVIdeographicBaseline :: Maybe Double
+  , fontDataVAlphabeticBaseline :: Maybe Double
+  , fontDataVMathematicalBaseline :: Maybe Double
+  , fontDataVHangingBaseline :: Maybe Double
     -- ^ (k, g1, g2, u1, u2)
   } deriving Show
 
@@ -203,6 +211,14 @@ openFont file = FontData
   , fontDataVerticalStem   = fontface `readAttrM` "stemv"
   , fontDataUnicodeRange = readString fontface "unicode-range" "U+0-10FFFF"
   , fontDataRawKernings = rawKerns
+  , fontDataIdeographicBaseline   = fontface `readAttrM` "ideographic"
+  , fontDataAlphabeticBaseline    = fontface `readAttrM` "alphabetic"
+  , fontDataMathematicalBaseline  = fontface `readAttrM` "mathematical"
+  , fontDataHangingBaseline       = fontface `readAttrM` "hanging"
+  , fontDataVIdeographicBaseline  = fontface `readAttrM` "v-ideographic"
+  , fontDataVAlphabeticBaseline   = fontface `readAttrM` "v-alphabetic"
+  , fontDataVMathematicalBaseline = fontface `readAttrM` "v-mathematical"
+  , fontDataVHangingBaseline      = fontface `readAttrM` "v-hanging"
   }
   where
     readAttr :: (Read a) => Element -> String -> a
