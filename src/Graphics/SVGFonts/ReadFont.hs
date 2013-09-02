@@ -146,7 +146,9 @@ data FontData = FontData
   , fontDataFamily :: String
   , fontDataStyle :: String
   , fontDataWeight :: String
+  , fontDataVariant :: String
   , fontDataStretch :: String
+  , fontDataSize :: Maybe String
   , fontDataUnitsPerEm :: Double
   , fontDataPanose :: String
   , fontDataAscent :: Double
@@ -182,7 +184,9 @@ openFont file = FontData
   , fontDataFamily     = readString fontface "font-family" ""
   , fontDataStyle      = readString fontface "font-style" "all"
   , fontDataWeight     = readString fontface "font-weight" "all"
+  , fontDataVariant    = readString fontface "font-variant" "normal"
   , fontDataStretch    = readString fontface "font-stretch" "normal"
+  , fontDataSize       = fontface `readStringM` "font-size"
   , fontDataUnitsPerEm = fontface `readAttr` "units-per-em"
   , fontDataPanose     = readString fontface "panose-1" "0 0 0 0 0 0 0 0 0 0"
   , fontDataAscent     = fontface `readAttr` "ascent"
@@ -204,6 +208,9 @@ openFont file = FontData
     -- | @readString e a d@ : @e@ element to read from; @a@ attribute to read; @d@ default value.
     readString :: Element -> String -> String -> String
     readString element attr d = fromMaybe d $ findAttr (unqual attr) element
+    
+    readStringM :: Element -> String -> Maybe String
+    readStringM element attr = findAttr (unqual attr) element
     
     xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
 

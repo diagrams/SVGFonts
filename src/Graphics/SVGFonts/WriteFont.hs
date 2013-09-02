@@ -25,6 +25,8 @@ makeSvgFont (fd, _) gs = do
                ! A.fontStyle fontStyle
                ! A.fontWeight fontWeight
                ! A.fontStretch fontStretch
+               ! A.fontVariant fontVariant
+               # maybeMaybe A.fontSize fontDataSize
                ! A.unitsPerEm unitsPerEm
                # maybeString A.panose1 fontDataPanose
                ! A.ascent ascent
@@ -114,6 +116,7 @@ makeSvgFont (fd, _) gs = do
     fontStyle = toValue $ fontDataStyle fd
     fontWeight = toValue $ fontDataWeight fd
     fontStretch = toValue $ fontDataStretch fd
+    fontVariant = toValue $ fontDataVariant fd
     unitsPerEm = toValue $ fontDataUnitsPerEm fd 
     ascent = toValue $ fontDataAscent fd
     descent = toValue $ fontDataDescent fd
