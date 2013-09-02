@@ -151,10 +151,12 @@ data FontData = FontData
   , fontDataSize :: Maybe String
   , fontDataUnitsPerEm :: Double
   , fontDataPanose :: String
+  , fontDataSlope :: Maybe Double
   , fontDataAscent :: Double
   , fontDataDescent :: Double
   , fontDataXHeight :: Double
   , fontDataCapHeight :: Double
+  , fontDataAccentHeight :: Maybe Double
   , fontDataHorizontalStem :: Maybe Double 
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataVerticalStem :: Maybe Double 
@@ -188,11 +190,13 @@ openFont file = FontData
   , fontDataStretch    = readString fontface "font-stretch" "normal"
   , fontDataSize       = fontface `readStringM` "font-size"
   , fontDataUnitsPerEm = fontface `readAttr` "units-per-em"
+  , fontDataSlope      = fontface `readAttrM` "slope"
   , fontDataPanose     = readString fontface "panose-1" "0 0 0 0 0 0 0 0 0 0"
   , fontDataAscent     = fontface `readAttr` "ascent"
   , fontDataDescent    = fontface `readAttr` "descent"
   , fontDataXHeight    = fontface `readAttr` "x-height"
   , fontDataCapHeight  = fontface `readAttr` "cap-height"
+  , fontDataAccentHeight = fontface `readAttrM` "accent-height"
   , fontDataHorizontalStem = fontface `readAttrM` "stemh"
   , fontDataVerticalStem   = fontface `readAttrM` "stemv"
   , fontDataUnicodeRange = readString fontface "unicode-range" "U+0-10FFFF"

@@ -29,10 +29,12 @@ makeSvgFont (fd, _) gs = do
                # maybeMaybe A.fontSize fontDataSize
                ! A.unitsPerEm unitsPerEm
                # maybeString A.panose1 fontDataPanose
+               # maybeMaybe A.slope fontDataSlope
                ! A.ascent ascent
                ! A.descent descent
                ! A.xHeight xHeight
                ! A.capHeight capHeight
+               # maybeMaybe A.accentHeight fontDataAccentHeight
                ! A.bbox bbox
                ! A.underlineThickness underlineT
                ! A.underlinePosition underlineP
