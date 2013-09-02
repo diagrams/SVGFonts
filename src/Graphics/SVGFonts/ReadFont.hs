@@ -144,7 +144,8 @@ data FontData = FontData
   , fontDataUnderlineThickness :: Double
   , fontDataHorizontalAdvance :: Double
   , fontDataFamily :: String
-  , fontDataWeight :: Double
+  , fontDataStyle :: String
+  , fontDataWeight :: String
   , fontDataStretch :: String
   , fontDataUnitsPerEm :: Double
   , fontDataPanose :: String
@@ -179,7 +180,8 @@ openFont file = FontData
   , fontDataUnderlineThickness = fontface `readAttr` "underline-thickness"
   , fontDataHorizontalAdvance  = fontHadv
   , fontDataFamily     = fontFamily
-  , fontDataWeight     = fontface `readAttr` "font-weight"
+  , fontDataStyle      = fontStyle
+  , fontDataWeight     = fontWeight
   , fontDataStretch    = fontStretch
   , fontDataUnitsPerEm = fontface `readAttr` "units-per-em"
   , fontDataPanose     = panose
@@ -209,9 +211,11 @@ openFont file = FontData
     parsedBBox :: [Double]
     parsedBBox = map read $ splitWhen isSpace bbox
     fontFamily   = fromMaybe "" $ findAttr (unqual "font-family") fontface
-    fontStretch   = fromMaybe "" $ findAttr (unqual "font-stretch") fontface
+    fontStyle    = fromMaybe "all" $ findAttr (unqual "font-style") fontface
+    fontStretch   = fromMaybe "normal" $ findAttr (unqual "font-stretch") fontface
+    fontWeight   = fromMaybe "all" $ findAttr (unqual "font-weight") fontface
     panose     = fromMaybe "" $ findAttr (unqual "panose-1") fontface
-    unicodeRange = fromMaybe "" $ findAttr (unqual "unicode-range") fontface
+    unicodeRange = fromMaybe "U+0-10FFFF" $ findAttr (unqual "unicode-range") fontface
 
     glyphElements = findChildren (unqual "glyph") fontElement
     kernings = findChildren (unqual "hkern") fontElement

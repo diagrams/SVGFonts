@@ -22,6 +22,7 @@ makeSvgFont (fd, _) gs = do
   font ! A.horizAdvX horizAdvX $ do
     -- Font meta information
     S.fontFace ! A.fontFamily fontFamily
+               ! A.fontStyle fontStyle
                ! A.fontWeight fontWeight
                ! A.fontStretch fontStretch
                ! A.unitsPerEm unitsPerEm
@@ -110,6 +111,7 @@ makeSvgFont (fd, _) gs = do
     
     horizAdvX = toValue $ fontDataHorizontalAdvance fd
     fontFamily = toValue $ fontDataFamily fd
+    fontStyle = toValue $ fontDataStyle fd
     fontWeight = toValue $ fontDataWeight fd
     fontStretch = toValue $ fontDataStretch fd
     unitsPerEm = toValue $ fontDataUnitsPerEm fd 
