@@ -39,6 +39,7 @@ makeSvgFont (fd, _) gs = do
                ! A.underlineThickness underlineT
                ! A.underlinePosition underlineP
                ! A.unicodeRange unicodeRange
+               # maybeMaybe A.widths fontDataWidths
                # maybeMaybe A.stemv fontDataHorizontalStem
                # maybeMaybe A.stemh fontDataVerticalStem
     -- Insert the 'missing-glyph'

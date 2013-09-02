@@ -157,6 +157,7 @@ data FontData = FontData
   , fontDataXHeight :: Double
   , fontDataCapHeight :: Double
   , fontDataAccentHeight :: Maybe Double
+  , fontDataWidths :: Maybe String
   , fontDataHorizontalStem :: Maybe Double 
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataVerticalStem :: Maybe Double 
@@ -197,6 +198,7 @@ openFont file = FontData
   , fontDataXHeight    = fontface `readAttr` "x-height"
   , fontDataCapHeight  = fontface `readAttr` "cap-height"
   , fontDataAccentHeight = fontface `readAttrM` "accent-height"
+  , fontDataWidths  = fontface `readStringM` "widths"
   , fontDataHorizontalStem = fontface `readAttrM` "stemh"
   , fontDataVerticalStem   = fontface `readAttrM` "stemv"
   , fontDataUnicodeRange = readString fontface "unicode-range" "U+0-10FFFF"
