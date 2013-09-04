@@ -142,24 +142,42 @@ data FontData = FontData
   , fontDataFileName :: String
   , fontDataUnderlinePos :: Double
   , fontDataUnderlineThickness :: Double
+  , fontDataOverlinePos :: Maybe Double
+  , fontDataOverlineThickness :: Maybe Double
+  , fontDataStrikethroughPos :: Maybe Double
+  , fontDataStrikethroughThickness :: Maybe Double
   , fontDataHorizontalAdvance :: Double
   , fontDataFamily :: String
-  , fontDataWeight :: Double
+  , fontDataStyle :: String
+  , fontDataWeight :: String
+  , fontDataVariant :: String
   , fontDataStretch :: String
+  , fontDataSize :: Maybe String
   , fontDataUnitsPerEm :: Double
   , fontDataPanose :: String
+  , fontDataSlope :: Maybe Double
   , fontDataAscent :: Double
   , fontDataDescent :: Double
   , fontDataXHeight :: Double
   , fontDataCapHeight :: Double
+  , fontDataAccentHeight :: Maybe Double
+  , fontDataWidths :: Maybe String
   , fontDataHorizontalStem :: Maybe Double 
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataVerticalStem :: Maybe Double 
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataUnicodeRange :: String
+  , fontDataRawKernings :: [(String, [String], [String], [String], [String])] 
+  , fontDataIdeographicBaseline :: Maybe Double
+  , fontDataAlphabeticBaseline :: Maybe Double
+  , fontDataMathematicalBaseline :: Maybe Double
+  , fontDataHangingBaseline :: Maybe Double
+  , fontDataVIdeographicBaseline :: Maybe Double
+  , fontDataVAlphabeticBaseline :: Maybe Double
+  , fontDataVMathematicalBaseline :: Maybe Double
+  , fontDataVHangingBaseline :: Maybe Double
+    -- ^ (k, g1, g2, u1, u2)
   } deriving Show
---type FontData = (SvgGlyph, Kern, [Double], String, (Double, Double),
---                (Double,String,Double,String,Double,String,Double,Double,Double,Double,Double,Double,String))
 
 -- | Open an SVG-Font File and extract the data
 --
@@ -178,18 +196,37 @@ openFont file = FontData
   , fontDataUnderlinePos       = fontface `readAttr` "underline-position"
   , fontDataUnderlineThickness = fontface `readAttr` "underline-thickness"
   , fontDataHorizontalAdvance  = fontHadv
-  , fontDataFamily     = fontFamily
-  , fontDataWeight     = fontface `readAttr` "font-weight"
-  , fontDataStretch    = fontStretch
+  , fontDataFamily     = readString fontface "font-family" ""
+  , fontDataStyle      = readString fontface "font-style" "all"
+  , fontDataWeight     = readString fontface "font-weight" "all"
+  , fontDataVariant    = readString fontface "font-variant" "normal"
+  , fontDataStretch    = readString fontface "font-stretch" "normal"
+  , fontDataSize       = fontface `readStringM` "font-size"
   , fontDataUnitsPerEm = fontface `readAttr` "units-per-em"
-  , fontDataPanose     = panose
+  , fontDataSlope      = fontface `readAttrM` "slope"
+  , fontDataPanose     = readString fontface "panose-1" "0 0 0 0 0 0 0 0 0 0"
   , fontDataAscent     = fontface `readAttr` "ascent"
   , fontDataDescent    = fontface `readAttr` "descent"
   , fontDataXHeight    = fontface `readAttr` "x-height"
   , fontDataCapHeight  = fontface `readAttr` "cap-height"
+  , fontDataAccentHeight = fontface `readAttrM` "accent-height"
+  , fontDataWidths  = fontface `readStringM` "widths"
   , fontDataHorizontalStem = fontface `readAttrM` "stemh"
   , fontDataVerticalStem   = fontface `readAttrM` "stemv"
-  , fontDataUnicodeRange = unicodeRange
+  , fontDataUnicodeRange = readString fontface "unicode-range" "U+0-10FFFF"
+  , fontDataRawKernings = rawKerns
+  , fontDataIdeographicBaseline   = fontface `readAttrM` "ideographic"
+  , fontDataAlphabeticBaseline    = fontface `readAttrM` "alphabetic"
+  , fontDataMathematicalBaseline  = fontface `readAttrM` "mathematical"
+  , fontDataHangingBaseline       = fontface `readAttrM` "hanging"
+  , fontDataVIdeographicBaseline  = fontface `readAttrM` "v-ideographic"
+  , fontDataVAlphabeticBaseline   = fontface `readAttrM` "v-alphabetic"
+  , fontDataVMathematicalBaseline = fontface `readAttrM` "v-mathematical"
+  , fontDataVHangingBaseline      = fontface `readAttrM` "v-hanging"
+  , fontDataOverlinePos            = fontface `readAttrM` "overline-position"
+  , fontDataOverlineThickness      = fontface `readAttrM` "overline-thickness"
+  , fontDataStrikethroughPos       = fontface `readAttrM` "strikethrough-position"
+  , fontDataStrikethroughThickness = fontface `readAttrM` "strikethrough-thickness"
   }
   where
     readAttr :: (Read a) => Element -> String -> a
@@ -198,19 +235,22 @@ openFont file = FontData
     readAttrM :: (Read a) => Element -> String -> Maybe a
     readAttrM element attr = fmap read $ findAttr (unqual attr) element
     
+    -- | @readString e a d@ : @e@ element to read from; @a@ attribute to read; @d@ default value.
+    readString :: Element -> String -> String -> String
+    readString element attr d = fromMaybe d $ findAttr (unqual attr) element
+    
+    readStringM :: Element -> String -> Maybe String
+    readStringM element attr = findAttr (unqual attr) element
+    
     xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
 
     fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
     fontHadv = fromMaybe ((parsedBBox!!2) - (parsedBBox!!0)) -- BBox is used if there is no "horiz-adv-x" attribute
                          (fmap read (findAttr (unqual "horiz-adv-x") fontElement) )
     fontface = fromJust $ findElement (unqual "font-face") fontElement -- there is always a font-face node
-    bbox     = fromMaybe "" $ findAttr (unqual "bbox") fontface
+    bbox     = readString fontface "bbox" ""
     parsedBBox :: [Double]
     parsedBBox = map read $ splitWhen isSpace bbox
-    fontFamily   = fromMaybe "" $ findAttr (unqual "font-family") fontface
-    fontStretch   = fromMaybe "" $ findAttr (unqual "font-stretch") fontface
-    panose     = fromMaybe "" $ findAttr (unqual "panose-1") fontface
-    unicodeRange = fromMaybe "" $ findAttr (unqual "unicode-range") fontface
 
     glyphElements = findChildren (unqual "glyph") fontElement
     kernings = findChildren (unqual "hkern") fontElement
@@ -232,6 +272,15 @@ openFont file = FontData
     g2s         = map (fromMaybe "") $ map (findAttr (unqual "g2"))  kernings
     ks          = map (fromMaybe "") $ map (findAttr (unqual "k"))   kernings
     kAr     = V.fromList (map read ks)
+    
+    rawKerns = fmap getRawKern kernings
+    getRawKern kerning =
+      let u1 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "u1") $ kerning
+          u2 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "u2") $ kerning
+          g1 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "g1") $ kerning
+          g2 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "g2") $ kerning
+          k  = fromMaybe "" $ findAttr (unqual "k") $ kerning
+      in (k, g1, g2, u1, u2)
 
     transformChars chars = Map.fromList $ map ch $ multiSet $
                                           map (\(x,y) -> (x,[y])) $ sort fst $ concat $ index chars
