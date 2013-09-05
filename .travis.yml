@@ -9,6 +9,7 @@ before_install:
 install:
   - cabal install --only-dependencies --enable-tests --constraint='mtl >= 2.1'
 notifications:
+  email: false
   irc:
     channels:
       - irc.freenode.org#diagrams
