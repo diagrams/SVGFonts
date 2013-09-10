@@ -1,3 +1,11 @@
+1.4 (10 September 2013)
+-----------------------
+
+- Can now write as well as read font data
+- Support for many more font attributes
+- get rid of some uses of unsafePerformIO
+- minor bug fixes
+
 1.3.0.2 (14 August 2013)
 ------------------------
 
