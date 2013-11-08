@@ -1,13 +1,29 @@
 language: haskell
+
+env:
+  matrix:
+    - HPVER=2012.4.0.0
+    - HPVER=2013.2.0.0
+    - GHCVER=7.4.2
+    - GHCVER=7.6.3
+    - GHCVER=head
+  global:
+    - CABALVER=1.18
+    - HEAD_DEPS="diagrams-core diagrams-lib"
+
+matrix:
+  allow_failures:
+    - env: GHCVER=head
+
 before_install:
-  - cabal update
-  - git clone --quiet git://github.com/diagrams/diagrams-core.git diagrams/diagrams-core
-  - git clone --quiet git://github.com/diagrams/diagrams-lib.git diagrams/diagrams-lib
-  - cd diagrams
-  - cabal install diagrams-core/ diagrams-lib/ --constraint='mtl >= 2.1'
-  - cd ..
-install:
-  - cabal install --only-dependencies --enable-tests --constraint='mtl >= 2.1'
+  - git clone http://github.com/diagrams/diagrams-travis travis
+  - source travis/scripts/set_env.sh
+  - ./travis/scripts/before_install.sh
+
+install: ./travis/scripts/install.sh
+
+script: ./travis/scripts/script.sh
+
 notifications:
   email: false
   irc:
