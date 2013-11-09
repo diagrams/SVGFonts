@@ -16,9 +16,11 @@ module Graphics.SVGFonts.ReadPath
  )
  where
 
-import Text.ParserCombinators.Parsec hiding (spaces)
-import qualified Text.ParserCombinators.Parsec.Token as P
-import Text.ParserCombinators.Parsec.Language(emptyDef)
+import           Control.Applicative                    hiding (many, (<|>))
+
+import           Text.ParserCombinators.Parsec          hiding (spaces)
+import           Text.ParserCombinators.Parsec.Language (emptyDef)
+import qualified Text.ParserCombinators.Parsec.Token    as P
 
 type X = Double
 type Y = Double
@@ -70,31 +72,32 @@ path = do{ l <- many pathElement
          }
 
 pathElement :: Parser [PathCommand]
-pathElement = do{ whiteSpace;
-              do{ symbol "M";  l <- many1 tupel2; return (map (\x-> M_abs x) l) } <|>
-              do{ symbol "m";  l <- many1 tupel2; return (map (\x-> M_rel x) l) } <|>
-              do{ symbol "z"; return [Z]; } <|>
-              do{ symbol "Z"; return [Z]; } <|>
-              do{ symbol "L";  l <- many1 tupel2; return (map (\x-> L_abs x) l) } <|>
-              do{ symbol "l";  l <- many1 tupel2; return (map (\x-> L_rel x) l) } <|>
-              do{ symbol "H";  l <- many1 myfloat; return (map (\x-> H_abs (realToFrac x)) l) } <|>
-              do{ symbol "h";  l <- many1 myfloat; return (map (\x-> H_rel (realToFrac x)) l) } <|>
-              do{ symbol "V";  l <- many1 myfloat; return (map (\x-> V_abs (realToFrac x)) l) } <|>
-              do{ symbol "v";  l <- many1 myfloat; return (map (\x-> V_rel (realToFrac x)) l) } <|>
-              do{ symbol "C";  l <- many1 tupel6; return (map (\x-> C_abs x) l) } <|>
-              do{ symbol "c";  l <- many1 tupel6; return (map (\x-> C_rel x) l) } <|>
-              do{ symbol "S";  l <- many1 tupel4; return (map (\x-> S_abs x) l) } <|>
-              do{ symbol "s";  l <- many1 tupel4; return (map (\x-> S_rel x) l) } <|>
-              do{ symbol "Q";  l <- many1 tupel4; return (map (\x-> Q_abs x) l) } <|>
-              do{ symbol "q";  l <- many1 tupel4; return (map (\x-> Q_rel x) l) } <|>
-              do{ symbol "T";  l <- many1 tupel2; return (map (\x-> T_abs x) l) } <|>
-              do{ symbol "t";  l <- many1 tupel2; return (map (\x-> T_rel x) l) } <|>
-              do{ symbol "A";  l <- many1 tupel2; return (map (\_-> A_abs) l) } <|> -- not used
-              do{ symbol "a";  l <- many1 tupel2; return (map (\_-> A_rel) l) }     -- not used
-            }
+pathElement =
+  whiteSpace *>
+  (  symbol "M" *> many1 (M_abs <$> tupel2)
+ <|> symbol "m" *> many1 (M_rel <$> tupel2)
+ <|> symbol "z" *> pure [Z]
+ <|> symbol "Z" *> pure [Z]
+ <|> symbol "L" *> many1 (L_abs <$> tupel2)
+ <|> symbol "l" *> many1 (L_rel <$> tupel2)
+ <|> symbol "H" *> many1 (H_abs . realToFrac <$> myfloat)
+ <|> symbol "h" *> many1 (H_rel . realToFrac <$> myfloat)
+ <|> symbol "V" *> many1 (V_abs . realToFrac <$> myfloat)
+ <|> symbol "v" *> many1 (V_rel . realToFrac <$> myfloat)
+ <|> symbol "C" *> many1 (C_abs <$> tupel6)
+ <|> symbol "c" *> many1 (C_rel <$> tupel6)
+ <|> symbol "S" *> many1 (S_abs <$> tupel4)
+ <|> symbol "s" *> many1 (S_rel <$> tupel4)
+ <|> symbol "Q" *> many1 (Q_abs <$> tupel4)
+ <|> symbol "q" *> many1 (Q_rel <$> tupel4)
+ <|> symbol "T" *> many1 (T_abs <$> tupel2)
+ <|> symbol "t" *> many1 (T_rel <$> tupel2)
+ <|> symbol "A" *> many1 (A_abs <$  tupel2)
+ <|> symbol "a" *> many1 (A_rel <$  tupel2)
+  )
 
 comma :: Parser ()
-comma = do{ spaces; try (do { (char ','); return () }) <|> spaces }
+comma = spaces *> (try (() <$ char ',' ) <|> spaces)
 
 tupel2 :: Parser (X,Y)
 tupel2 = do{ x <- myfloat; comma; y <- myfloat; spaces;
@@ -115,9 +118,9 @@ tupel6 = do{ x1 <- myfloat; comma; y1 <- myfloat; spaces;
            }
 
 myfloat :: Parser Double
-myfloat = try (do{ symbol "-"; n <- float; return (negate n) }) <|>
+myfloat = try (do{ _ <- symbol "-"; n <- float; return (negate n) }) <|>
           try float <|> -- 0 is not recognized as a float, so recognize it as an integer and then convert to float
-              do { i<-integer; return(fromIntegral i) } 
+              do { i<-integer; return(fromIntegral i) }
 
 lexer :: P.TokenParser a
 lexer = P.makeTokenParser emptyDef
