@@ -42,11 +42,12 @@ License:          BSD3
 License-file:     LICENSE
 Author:           Tillmann Vogt
 Maintainer:       diagrams-discuss@googlegroups.com
-build-type:       Custom
+build-type:       Simple
 Cabal-Version:    >=1.10
 
-data-files: fonts/*.svg
-extra-source-files: diagrams/*.svg
+data-files:       fonts/*.svg
+extra-source-files: CHANGES.md, README.md, diagrams/*.svg
+extra-doc-files:    diagrams/*.svg
 
 source-repository head
   type: git
