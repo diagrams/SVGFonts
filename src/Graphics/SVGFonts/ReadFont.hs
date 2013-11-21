@@ -33,7 +33,7 @@ instance Default TextOpts where
 -- >
 -- > textSVGExample = stroke $ textSVG "Hello World" 1
 --
--- <<diagrams/textSVGExample.svg#diagram=textSVGExample&width=300>>
+-- <<diagrams/src_Graphics_SVGFonts_ReadFont_textSVGExample.svg#diagram=textSVGExample&width=300>>
 textSVG :: String -> Double -> Path R2
 textSVG t h = textSVG' with { txt = t, textHeight = h }
 
@@ -57,7 +57,7 @@ data TextOpts = TextOpts
 -- >
 -- > textPic0 = (text' "Hello World") # showOrigin
 --
--- <<diagrams/textPic0.svg#diagram=textPic0&width=300>>
+-- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic0.svg#diagram=textPic0&width=300>>
 textSVG' :: TextOpts -> Path R2
 textSVG' to =
   case mode to of
@@ -98,7 +98,7 @@ textSVG' to =
 -- >
 -- > textPic1 = text'' "Hello World"
 --
--- <<diagrams/textPic1.svg#diagram=textPic1&width=300>>
+-- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
 textSVG_ :: forall b . Renderable (Path R2) b => TextOpts -> QDiagram b R2 Any
 textSVG_ to =
   case mode to of
@@ -374,18 +374,18 @@ type OutlineMap =  Map.Map String (Path R2)
 data Mode = INSIDE_H  -- ^ The string fills the complete height, width adjusted. Used in text editors.
                       -- The result can be smaller or bigger than the bounding box:
                       --
-                      --   <<diagrams/textH.svg#diagram=textH&width=400>>
+                      --   <<diagrams/src_Graphics_SVGFonts_ReadFont_textH.svg#diagram=textH&width=400>>
           | INSIDE_W  -- ^ The string fills the complete width, height adjusted.
                       -- May be useful for single words in a diagram, or for headlines.
                       -- The result can be smaller or bigger than the bounding box:
                       --
-                      -- <<diagrams/textW.svg#diagram=textW&width=400>>
+                      -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textW.svg#diagram=textW&width=400>>
           | INSIDE_WH -- ^ The string is stretched inside Width and Height boundaries.
                       -- The horizontal advances are increased if the string is shorter than there is space.
                       -- The horizontal advances are decreased if the string is longer than there is space.
                       -- This feature is experimental and might change in the future.
                       --
-                      -- <<diagrams/textWH.svg#diagram=textWH&width=400>>
+                      -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textWH.svg#diagram=textWH&width=400>>
            deriving Show
 
 mWH :: Mode -> Bool
@@ -410,11 +410,11 @@ mH _ = False
 --
 data Spacing = HADV -- ^ Every glyph has a unique horiz. advance
                     --
-                    --  <<diagrams/textHADV.svg#diagram=textHADV&width=400>>
+                    --  <<diagrams/src_Graphics_SVGFonts_ReadFont_textHADV.svg#diagram=textHADV&width=400>>
              | KERN -- ^ Recommended, same as HADV but sometimes overridden by kerning:
                     -- As You can see there is less space between \"A\" and \"V\":
                     --
-                    --   <<diagrams/textKern.svg#diagram=textKern&width=400>>
+                    --   <<diagrams/src_Graphics_SVGFonts_ReadFont_textKern.svg#diagram=textKern&width=400>>
              deriving Show
 
 isKern :: Spacing -> Bool
