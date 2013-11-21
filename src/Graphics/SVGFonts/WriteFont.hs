@@ -68,7 +68,7 @@ makeSvgFont (fd, _) gs = do
                 ! A.d (toValue gPath) 
                 # maybeUnicode g
                 $ return ()
-    let
+    
     forM_ (fontDataRawKernings fd) $ \(k, g1, g2, u1, u2) -> do
       let g1' = filter isGlyph g1
           g2' = filter isGlyph g2
@@ -141,4 +141,3 @@ makeSvgFont (fd, _) gs = do
     underlineT = toValue $ fontDataUnderlineThickness fd
     underlineP = toValue $ fontDataUnderlinePos fd
     unicodeRange = toValue $ fontDataUnicodeRange fd
-    
