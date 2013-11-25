@@ -1,11 +1,16 @@
+1.4.0.1 (25 November 2013)
+--------------------------
+
+- Bump `diagrams-lib` upper bound to `< 1.1`.
+
 1.4 (10 September 2013)
 -----------------------
 
-- `FontData` can now be written back to SVG using `makeSvgFont` inside of the `WriteFont` module. 
+- `FontData` can now be written back to SVG using `makeSvgFont` inside of the `WriteFont` module.
   It is possible to only write back a specfic set of glyphs.
-- The SVG `font-face` element is now completely supported. 
+- The SVG `font-face` element is now completely supported.
   This means all possible attributes are read and written back to it.
-  Correct defaults are also set on non optional attributes. Some optional attributes are still 
+  Correct defaults are also set on non optional attributes. Some optional attributes are still
   required though, due to their use in font rendering.
 - The `ReadPath` module does not use `unsafePerformIO` anymore. `ReadFont` is now the only module with unsafe calls.
 - Minor bug fixes:
