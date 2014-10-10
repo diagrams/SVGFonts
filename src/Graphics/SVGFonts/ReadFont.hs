@@ -12,7 +12,6 @@ import qualified Data.Map as Map
 import qualified Data.Text as T
 import Data.Tuple.Select
 import Data.Vector (Vector)
-import Data.VectorSpace
 import Diagrams.Path
 import Diagrams.Segment
 import Diagrams.TwoD.Types
@@ -34,7 +33,7 @@ instance Default TextOpts where
 -- > textSVGExample = stroke $ textSVG "Hello World" 1
 --
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textSVGExample.svg#diagram=textSVGExample&width=300>>
-textSVG :: String -> Double -> Path R2
+textSVG :: String -> Double -> Path V2 Double
 textSVG t h = textSVG' with { txt = t, textHeight = h }
 
 data TextOpts = TextOpts
@@ -58,7 +57,7 @@ data TextOpts = TextOpts
 -- > textPic0 = (text' "Hello World") # showOrigin
 --
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic0.svg#diagram=textPic0&width=300>>
-textSVG' :: TextOpts -> Path R2
+textSVG' :: TextOpts -> Path V2 Double
 textSVG' to =
   case mode to of
     INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) ((textWidth to) / (textHeight to * sumh / maxY))
@@ -75,12 +74,12 @@ textSVG' to =
                     | otherwise = mempty
     ulinePos = underlinePosition fontD
     ulineThickness = underlineThickness fontD
-    horPos space = reverse $ added ( zeroV : (map (unitX ^*) (adjusted_hs space)) )
+    horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
     adjusted_hs space = map (*space) hs
     hs = horizontalAdvances str fontD (isKern (spacing to))
     sumh = sum hs
     added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
-                       (zeroV,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
+                       (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
     ligatures = ((filter ((>1) . length)) . (Map.keys) . fontDataGlyphs) fontD
@@ -99,7 +98,7 @@ textSVG' to =
 -- > textPic1 = text'' "Hello World"
 --
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
-textSVG_ :: forall b . Renderable (Path R2) b => TextOpts -> QDiagram b R2 Any
+textSVG_ :: forall b . Renderable (Path V2 Double) b => TextOpts -> QDiagram b V2 Double Any
 textSVG_ to =
   case mode to of
     INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) ((textWidth to) / (textHeight to * sumh / maxY))
@@ -111,7 +110,7 @@ textSVG_ to =
                             translateY (- bbox_ly fontD) $
                             mconcat $
                             zipWith translate (horPos space)
-                            (map polygonChar (zip str (adjusted_hs space))) ) # stroke # withEnvelope ((rect (w*space) h) :: D R2)
+                            (map polygonChar (zip str (adjusted_hs space))) ) # stroke # withEnvelope ((rect (w*space) h) :: D V2 Double)
                           ) # alignBL # translateY (bbox_ly fontD*h/maxY)
     (fontD,outl) = (fdo to)
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
@@ -119,12 +118,12 @@ textSVG_ to =
                     | otherwise = mempty
     ulinePos = underlinePosition fontD
     ulineThickness = underlineThickness fontD
-    horPos space = reverse $ added ( zeroV : (map (unitX ^*) (adjusted_hs space)) )
+    horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
     hs = horizontalAdvances str fontD (isKern (spacing to))
     adjusted_hs space = map (*space) hs -- the last char should not have space to the border
     sumh = sum hs
     added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
-                       (zeroV,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
+                       (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
     ligatures = ((filter ((>1) . length)) . (Map.keys) . fontDataGlyphs) fontD
@@ -350,7 +349,7 @@ kernAdvance ch0 ch1 kern u |     u && not (null s0) = (kernK kern) V.! (head s0)
         s1 = intersect (s kernG1S ch0) (s kernG2S ch1)
         s sel ch = concat (maybeToList (Map.lookup ch (sel kern)))
 
-type OutlineMap =  Map.Map String (Path R2)
+type OutlineMap =  Map.Map String (Path V2 Double)
 
 -- > import Graphics.SVGFonts.ReadFont
 -- > textWH0 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "SPACES" lin INSIDE_WH KERN False 8 1 )
@@ -453,10 +452,10 @@ outlMap :: String -> (FontData, OutlineMap)
 outlMap str = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
   where
   allUnicodes = Map.keys (fontDataGlyphs fontD)
-  outlines ch = mconcat $ commandsToTrails (commands ch (fontDataGlyphs fontD)) [] zeroV zeroV zeroV
+  outlines ch = mconcat $ commandsToTrails (commands ch (fontDataGlyphs fontD)) [] zero zero zero
   fontD = openFont str
 
-commandsToTrails :: [PathCommand] -> [Segment Closed R2] -> R2 -> R2 -> R2 -> [Path R2]
+commandsToTrails :: [PathCommand] -> [Segment Closed V2 Double] -> V2 Double -> V2 Double -> V2 Double -> [Path V2 Double]
 commandsToTrails [] _ _ _ _ = []
 commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of the last segment
       | isNothing nextSegment = (translate beginPoint (pathFromTrail . wrapTrail  . closeLine $ lineFromSegments segments)) :
@@ -466,7 +465,7 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
   where nextSegment = go c
         offs | isJust nextSegment
                = segOffset (fromJust nextSegment)
-             | otherwise = zeroV
+             | otherwise = zero
         (x0,y0) = unr2 offs
         (cx,cy) = unr2 lastContr -- last control point is always in absolute coordinates
         beginP ( M_abs (x,y) ) = r2 (x,y)

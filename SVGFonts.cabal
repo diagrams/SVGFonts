@@ -71,7 +71,6 @@ Library
         text,
         tuple,
         vector,
-        vector-space,
         xml
     exposed-modules:
         Graphics.SVGFonts
