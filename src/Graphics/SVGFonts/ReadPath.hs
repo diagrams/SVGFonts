@@ -22,42 +22,35 @@ import           Text.ParserCombinators.Parsec          hiding (spaces)
 import           Text.ParserCombinators.Parsec.Language (emptyDef)
 import qualified Text.ParserCombinators.Parsec.Token    as P
 
-type X = Double
-type Y = Double
-type Tup = (X,Y)
-type X1 = X
-type Y1 = Y
-type X2 = X
-type Y2 = Y
-data PathCommand =
-  M_abs Tup | -- ^Establish a new current point (with absolute coords)
-  M_rel Tup | -- ^Establish a new current point (with coords relative to the current point)
+data PathCommand n =
+  M_abs (n, n) | -- ^Establish a new current point (with absolute coords)
+  M_rel (n, n) | -- ^Establish a new current point (with coords relative to the current point)
   Z | -- ^Close current subpath by drawing a straight line from current point to current subpath's initial point
-  L_abs Tup | -- ^A line from the current point to Tup which becomes the new current point
-  L_rel Tup |
-  H_abs X | -- ^A horizontal line from the current point (cpx, cpy) to (x, cpy)
-  H_rel X |
-  V_abs Y | -- ^A vertical line from the current point (cpx, cpy) to (cpx, y)
-  V_rel Y |
-  C_abs (X1,Y1,X2,Y2,X,Y) | -- ^Draws a cubic Bézier curve from the current point to (x,y) using (x1,y1) as the
+  L_abs (n, n) | -- ^A line from the current point to (n, n) which becomes the new current point
+  L_rel (n, n) |
+  H_abs n | -- ^A horizontal line from the current point (cpx, cpy) to (x, cpy)
+  H_rel n |
+  V_abs n | -- ^A vertical line from the current point (cpx, cpy) to (cpx, y)
+  V_rel n |
+  C_abs (n,n,n,n,n,n) | -- ^Draws a cubic Bézier curve from the current point to (x,y) using (x1,y1) as the
   -- ^control point at the beginning of the curve and (x2,y2) as the control point at the end of the curve.
-  C_rel (X1,Y1,X2,Y2,X,Y) |
-  S_abs (X2,Y2,X,Y) | -- ^Draws a cubic Bézier curve from the current point to (x,y). The first control point is
+  C_rel (n,n,n,n,n,n) |
+  S_abs (n,n,n,n) | -- ^Draws a cubic Bézier curve from the current point to (x,y). The first control point is
 -- assumed to be the reflection of the second control point on the previous command relative to the current point.
 -- (If there is no previous command or if the previous command was not an C, c, S or s, assume the first control
 -- point is coincident with the current point.) (x2,y2) is the second control point (i.e., the control point at
 -- the end of the curve).
-  S_rel (X2,Y2,X,Y) |
-  Q_abs (X1,Y1,X,Y) | -- ^A quadr. Bézier curve from the curr. point to (x,y) using (x1,y1) as the control point
-  Q_rel (X1,Y1,X,Y) | -- ^Nearly the same as cubic, but with one point less
-  T_abs Tup | -- ^T_Abs = Shorthand/smooth quadratic Bezier curveto
-  T_rel Tup |
+  S_rel (n,n,n,n) |
+  Q_abs (n,n,n,n) | -- ^A quadr. Bézier curve from the curr. point to (x,y) using (x1,y1) as the control point
+  Q_rel (n,n,n,n) | -- ^Nearly the same as cubic, but with one point less
+  T_abs (n, n) | -- ^T_Abs = Shorthand/smooth quadratic Bezier curveto
+  T_rel (n, n) |
   A_abs | -- ^A = Elliptic arc (not used)
   A_rel
   deriving Show
 
 -- | Convert a SVG path string into a list of commands
-pathFromString :: String -> Either String [PathCommand]
+pathFromString :: Fractional n => String -> Either String [PathCommand n]
 pathFromString str = case parse path "" str of
   Left  err -> Left  (show err)
   Right p   -> Right p
@@ -65,13 +58,13 @@ pathFromString str = case parse path "" str of
 spaces :: Parser ()
 spaces = skipMany space
 
-path :: Parser [PathCommand]
+path :: Fractional n => Parser [PathCommand n]
 path = do{ l <- many pathElement
          ; eof
          ; return (concat l)
          }
 
-pathElement :: Parser [PathCommand]
+pathElement :: Fractional n => Parser [PathCommand n]
 pathElement =
   whiteSpace *>
   (  symbol "M" *> many1 (M_abs <$> tupel2)
@@ -99,18 +92,18 @@ pathElement =
 comma :: Parser ()
 comma = spaces *> (try (() <$ char ',' ) <|> spaces)
 
-tupel2 :: Parser (X,Y)
+tupel2 :: Fractional n => Parser (n,n)
 tupel2 = do{ x <- myfloat; comma; y <- myfloat; spaces;
              return (realToFrac x, realToFrac y)
            }
 
-tupel4 :: Parser (X,Y,X,Y)
+tupel4 :: Fractional n => Parser (n,n,n,n)
 tupel4 = do{ x1 <- myfloat; comma; y1 <- myfloat; spaces;
               x <- myfloat; comma;  y <- myfloat; spaces;
              return (realToFrac x1, realToFrac y1, realToFrac x, realToFrac y)
            }
 
-tupel6 :: Parser (X,Y,X,Y,X,Y)
+tupel6 :: Fractional n => Parser (n,n,n,n,n,n)
 tupel6 = do{ x1 <- myfloat; comma; y1 <- myfloat; spaces;
              x2 <- myfloat; comma; y2 <- myfloat; spaces;
               x <- myfloat; comma;  y <- myfloat; spaces;
