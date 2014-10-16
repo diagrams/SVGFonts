@@ -17,8 +17,8 @@ import qualified Text.Blaze.Svg11.Attributes as A
 
 import Graphics.SVGFonts.ReadFont
 
-makeSvgFont :: (FontData, OutlineMap) -> Set.Set String -> S.Svg
-makeSvgFont (fd, _) gs = do
+makeSvgFont :: (Show n, S.ToValue n) => (FontData n, OutlineMap n) -> Set.Set String -> S.Svg
+makeSvgFont (fd, _) gs =
   font ! A.horizAdvX horizAdvX $ do
     -- Font meta information
     S.fontFace ! A.fontFamily fontFamily
@@ -62,7 +62,7 @@ makeSvgFont (fd, _) gs = do
     -- Insert all other glyphs
     forM_ (Set.toList gs') $ \g -> case M.lookup g (fontDataGlyphs fd) of
       Nothing -> return ()
-      Just (gName, gHAdv, gPath) -> do
+      Just (gName, gHAdv, gPath) ->
         S.glyph ! A.glyphName (toValue gName)
                 ! A.horizAdvX (toValue gHAdv)
                 ! A.d (toValue gPath) 
@@ -75,7 +75,7 @@ makeSvgFont (fd, _) gs = do
           u1' = filter isGlyph u1
           u2' = filter isGlyph u2
       case (not (null g1') && not (null g2')) || (not (null u1') && not (null u2')) of
-        True -> do
+        True ->
           S.hkern ! A.k (toValue k)
                   # maybeString A.g1 (const $ intercalate "," g1')
                   # maybeString A.g2 (const $ intercalate "," g2')
@@ -105,15 +105,15 @@ makeSvgFont (fd, _) gs = do
       let cOrd = ord c
       in if cOrd >= 32 && cOrd <= 126 
             then [c] 
-            else "&#x" ++ (showHex cOrd "")
+            else "&#x" ++ showHex cOrd ""
     
-    maybeMaybe :: (S.ToValue a) 
-               => (S.AttributeValue -> S.Attribute) -> (FontData -> Maybe a) 
-               -> Maybe S.Attribute
+    -- maybeMaybe :: (S.ToValue a) 
+    --            => (S.AttributeValue -> S.Attribute) -> (FontData n -> Maybe a) 
+    --            -> Maybe S.Attribute
     maybeMaybe toF fromF = (toF . toValue) `fmap` fromF fd
     
-    maybeString :: (S.AttributeValue -> S.Attribute) -> (FontData -> String) 
-                -> Maybe S.Attribute
+    -- maybeString :: (S.AttributeValue -> S.Attribute) -> (FontData n -> String) 
+    --             -> Maybe S.Attribute
     maybeString toF fromF = case fromF fd of
       "" -> Nothing
       s -> Just $ toF $ toValue $ s
