@@ -73,10 +73,10 @@ pathElement =
  <|> symbol "Z" *> pure [Z]
  <|> symbol "L" *> many1 (L_abs <$> tupel2)
  <|> symbol "l" *> many1 (L_rel <$> tupel2)
- <|> symbol "H" *> many1 (H_abs . realToFrac <$> myfloat)
- <|> symbol "h" *> many1 (H_rel . realToFrac <$> myfloat)
- <|> symbol "V" *> many1 (V_abs . realToFrac <$> myfloat)
- <|> symbol "v" *> many1 (V_rel . realToFrac <$> myfloat)
+ <|> symbol "H" *> many1 (H_abs <$> myfloat)
+ <|> symbol "h" *> many1 (H_rel <$> myfloat)
+ <|> symbol "V" *> many1 (V_abs <$> myfloat)
+ <|> symbol "v" *> many1 (V_rel <$> myfloat)
  <|> symbol "C" *> many1 (C_abs <$> tupel6)
  <|> symbol "c" *> many1 (C_rel <$> tupel6)
  <|> symbol "S" *> many1 (S_abs <$> tupel4)
@@ -85,8 +85,8 @@ pathElement =
  <|> symbol "q" *> many1 (Q_rel <$> tupel4)
  <|> symbol "T" *> many1 (T_abs <$> tupel2)
  <|> symbol "t" *> many1 (T_rel <$> tupel2)
- <|> symbol "A" *> many1 (A_abs <$  tupel2)
- <|> symbol "a" *> many1 (A_rel <$  tupel2)
+ <|> symbol "A" *> many1 (A_abs <$  (tupel2::Parser (Double,Double)))
+ <|> symbol "a" *> many1 (A_rel <$  (tupel2::Parser (Double,Double)))
   )
 
 comma :: Parser ()
@@ -94,23 +94,23 @@ comma = spaces *> (try (() <$ char ',' ) <|> spaces)
 
 tupel2 :: Fractional n => Parser (n,n)
 tupel2 = do{ x <- myfloat; comma; y <- myfloat; spaces;
-             return (realToFrac x, realToFrac y)
+             return (x, y)
            }
 
 tupel4 :: Fractional n => Parser (n,n,n,n)
 tupel4 = do{ x1 <- myfloat; comma; y1 <- myfloat; spaces;
               x <- myfloat; comma;  y <- myfloat; spaces;
-             return (realToFrac x1, realToFrac y1, realToFrac x, realToFrac y)
+             return (x1, y1, x, y)
            }
 
 tupel6 :: Fractional n => Parser (n,n,n,n,n,n)
 tupel6 = do{ x1 <- myfloat; comma; y1 <- myfloat; spaces;
              x2 <- myfloat; comma; y2 <- myfloat; spaces;
               x <- myfloat; comma;  y <- myfloat; spaces;
-             return (realToFrac x1, realToFrac y1, realToFrac x2, realToFrac y2, realToFrac x, realToFrac y)
+             return (x1, y1, x2, y2, x, y)
            }
 
-myfloat :: Parser Double
+myfloat :: Fractional n => Parser n
 myfloat = try (do{ _ <- symbol "-"; n <- float; return (negate n) }) <|>
           try float <|> -- 0 is not recognized as a float, so recognize it as an integer and then convert to float
               do { i<-integer; return(fromIntegral i) }
@@ -124,5 +124,5 @@ symbol :: String -> Parser String
 symbol          = P.symbol lexer
 integer :: Parser Integer
 integer         = P.integer lexer
-float :: Parser Double
-float           = P.float lexer
+float :: Fractional n => Parser n
+float           = realToFrac <$> P.float lexer

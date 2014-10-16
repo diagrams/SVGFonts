@@ -60,7 +60,7 @@ data TextOpts n = TextOpts
 textSVG' :: RealFloat n => TextOpts n -> Path V2 n
 textSVG' to =
   case mode to of
-    INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) ((textWidth to) / (textHeight to * sumh / maxY))
+    INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) (textWidth to / (textHeight to * sumh / maxY))
     INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)   1 -- the third character is used to scale horizontal advances
     INSIDE_H  -> makeString (textHeight to * sumh / maxY) (textHeight to) 1
   where
@@ -68,7 +68,7 @@ textSVG' to =
                             mconcat $
                             zipWith translate (horPos space)
                            (map polygonChar (zip str (adjusted_hs space))) ) # centerXY
-    (fontD,outl) = (fdo to)
+    (fontD,outl) = fdo to
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
     underlineChar a | underline to = translateY ulinePos (rect a ulineThickness)
                     | otherwise = mempty
@@ -82,7 +82,7 @@ textSVG' to =
                        (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
-    ligatures = ((filter ((>1) . length)) . (Map.keys) . fontDataGlyphs) fontD
+    ligatures = ((filter ((>1) . length)) . Map.keys . fontDataGlyphs) fontD
     str = map T.unpack $ characterStrings (txt to) ligatures
 
 -- | The origin is at the left end of the baseline of of the text and the boundaries
@@ -126,7 +126,7 @@ textSVG_ to =
                        (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
-    ligatures = ((filter ((>1) . length)) . (Map.keys) . fontDataGlyphs) fontD
+    ligatures = (filter ((>1) . length) . Map.keys . fontDataGlyphs) fontD
     str = map T.unpack $ characterStrings (txt to) ligatures
 
 -- | This type contains everything that a typical SVG font file produced by fontforge contains.
@@ -135,7 +135,7 @@ textSVG_ to =
 --   (fontHadv, fontFamily, fontWeight, fontStretch, unitsPerEm, panose, ascent, descent, xHeight, capHeight, stemh, stemv, unicodeRange) )
 --
 data FontData n = FontData 
-  { fontDataGlyphs :: SvgGlyphs
+  { fontDataGlyphs :: SvgGlyphs n
   , fontDataKerning :: Kern n
   , fontDataBoundingBox :: [n]
   , fontDataFileName :: String
@@ -253,6 +253,7 @@ openFont file = FontData
 
     glyphElements = findChildren (unqual "glyph") fontElement
     kernings = findChildren (unqual "hkern") fontElement
+
     glyphs = map glyphsWithDefaults glyphElements
 
     -- monospaced fonts sometimes don't have a "horiz-adv-x="-value , replace with "horiz-adv-x=" in <font>
@@ -300,7 +301,7 @@ openFont file = FontData
     fname f = last $ init $ concat (map (splitOn "/") (splitOn "." f))
 
 
-type SvgGlyphs = RealFloat n => Map.Map String (String, n, String) 
+type SvgGlyphs n = Map.Map String (String, n, String) 
 -- ^ \[ (unicode, (glyph_name, horiz_advance, ds)) \]
 
 -- | Horizontal advances of characters inside a string.
@@ -472,14 +473,14 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
         beginP ( M_abs (x,y) ) = r2 (x,y)
         beginP ( M_rel (x,y) ) = l ^+^ r2 (x,y)
         beginP _ = beginPoint
-        contr ( C_abs (_x1,_y1,x2,y2,x,y) ) = r2 (x0+x-x2, y0+y-y2 ) -- control point of bezier curve
-        contr ( C_rel (_x1,_y1,x2,y2,x,y) ) = r2 (   x-x2,    y-y2 )
-        contr ( S_abs (x2,y2,x,y) )         = r2 (x0+x-x2, y0+y-y2 )
-        contr ( S_rel (x2,y2,x,y) )         = r2 (   x-x2,    y-y2 )
-        contr ( Q_abs (x1,y1,x,y) ) = r2 (x0+x-x1, y0+y-y1 )
-        contr ( Q_rel (x1,y1,x,y) ) = r2 (   x-x1,    y-y1 )
-        contr ( T_abs (_x,_y) )     = r2 (2*x0-cx, 2*y0-cy )
-        contr ( T_rel (x,y) )       = r2 (   x-cx,    y-cy )
+        contr ( C_abs (_x1,_y1,x2,y2,x,y) ) = r2 (x0+x - x2, y0+y - y2 ) -- control point of bezier curve
+        contr ( C_rel (_x1,_y1,x2,y2,x,y) ) = r2 (   x - x2,    y - y2 )
+        contr ( S_abs (x2,y2,x,y) )         = r2 (x0+x - x2, y0+y - y2 )
+        contr ( S_rel (x2,y2,x,y) )         = r2 (   x - x2,    y - y2 )
+        contr ( Q_abs (x1,y1,x,y) ) = r2 (x0+x - x1, y0+y - y1 )
+        contr ( Q_rel (x1,y1,x,y) ) = r2 (   x - x1,    y - y1 )
+        contr ( T_abs (_x,_y) )     = r2 (2*x0 - cx, 2*y0 - cy )
+        contr ( T_rel (x,y) )       = r2 (   x - cx,    y - cy )
         contr ( L_abs (_x,_y) ) = r2 (x0, y0)
         contr ( L_rel (_x,_y) ) = r2 ( 0,  0)
         contr ( M_abs (_x,_y) ) = r2 (x0, y0)
@@ -515,7 +516,7 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
         go ( A_abs ) = Nothing
         go ( A_rel ) = Nothing
 
-commands :: RealFloat n => String -> SvgGlyphs -> [PathCommand n]
+commands :: RealFloat n => String -> SvgGlyphs n -> [PathCommand n]
 commands ch glyph | isJust element = case pathFromString (sel3 $ fromJust element) of
                                        Left err -> unsafePerformIO $ do
                                          putStr "parse error at "
