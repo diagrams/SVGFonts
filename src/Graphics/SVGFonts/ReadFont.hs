@@ -26,9 +26,8 @@ import Data.Vector (Vector)
 import Diagrams.Path
 import Diagrams.Segment
 import Diagrams.TwoD.Types
-import Diagrams.Prelude
+import Diagrams.Prelude hiding (font)
 import qualified Data.Vector as V
-import System.IO.Unsafe (unsafePerformIO)
 import Text.XML.Light
 
 import Graphics.SVGFonts.ReadPath (pathFromString, PathCommand(..))
@@ -302,23 +301,42 @@ underlineThickness fontData = fontDataUnderlineThickness fontData
 -- | A map of unicode characters to outline paths.
 type OutlineMap n = Map.Map String (Path V2 n)
 
+-- | A map of unicode characters to parsing errors.
+type ErrorMap = Map.Map String String
+
 -- | A font including its outline map.
 type PreparedFont n = (FontData n, OutlineMap n)
 
--- | Compute a font's outline map.
-outlineMap :: (Read n, RealFloat n) => FontData n -> OutlineMap n
-outlineMap fontD = Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ]
+-- | Compute a font's outline map, collecting errors in a second map.
+outlineMap :: (Read n, RealFloat n) =>
+              FontData n -> (OutlineMap n, ErrorMap)
+outlineMap fontData =
+    ( Map.fromList [(ch, outl) | (ch, Right outl) <- allOutlines]
+    , Map.fromList [(ch, err)  | (ch, Left err)   <- allOutlines]
+    )
   where
-    allUnicodes = Map.keys (fontDataGlyphs fontD)
-    outlines ch = mconcat $ commandsToTrails (commands ch (fontDataGlyphs fontD)) [] zero zero zero
+    allUnicodes = Map.keys (fontDataGlyphs fontData)
+    outlines ch = do
+        cmds <- commands ch (fontDataGlyphs fontData)
+        return $ mconcat $ commandsToTrails cmds [] zero zero zero
+    allOutlines = [(ch, outlines ch) | ch <- allUnicodes]
 
--- | Prepare font for rendering, by determining its ouline map.
-prepareFont :: (Read n, RealFloat n) => FontData n -> PreparedFont n
-prepareFont fontData = (fontData, outlineMap fontData)
+-- | Prepare font for rendering, by determining its outline map.
+prepareFont :: (Read n, RealFloat n) =>
+               FontData n -> (PreparedFont n, ErrorMap)
+prepareFont fontData = ((fontData, outlines), errs)
+  where
+    (outlines, errs) = outlineMap fontData
 
 -- | Read font data from font file, and compute its outline map.
 loadFont :: (Read n, RealFloat n) => FilePath -> IO (PreparedFont n)
-loadFont filename = prepareFont . parseFont filename <$> readFile filename
+loadFont filename = do
+    fontData <- parseFont filename <$> readFile filename
+    let (font, errs) = prepareFont fontData
+    sequence_ [ putStrLn ("error parsing character '" ++ ch ++ "': " ++ err)
+              | (ch, err) <- Map.toList errs
+              ]
+    return font
 
 commandsToTrails ::RealFloat n => [PathCommand n] -> [Segment Closed V2 n] -> V2 n -> V2 n -> V2 n -> [Path V2 n]
 commandsToTrails [] _ _ _ _ = []
@@ -379,12 +397,7 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
         go ( A_abs ) = Nothing
         go ( A_rel ) = Nothing
 
-commands :: RealFloat n => String -> SvgGlyphs n -> [PathCommand n]
+commands :: RealFloat n => String -> SvgGlyphs n -> Either String [PathCommand n]
 commands ch glyph = case Map.lookup ch glyph of
-    Just element -> case pathFromString (sel3 element) of
-                        Left err -> unsafePerformIO $ do
-                            putStr "parse error at "
-                            print err
-                            return []
-                        Right p -> p
-    Nothing      -> []
+    Just element -> pathFromString (sel3 element)
+    Nothing      -> Right []
