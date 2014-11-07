@@ -15,8 +15,8 @@ dataFile = unsafePerformIO . getDataFileName
 
 -- | Load a font from a file in the data directory.
 loadDataFont :: (Read n, RealFloat n) =>
-loadDataFont = loadFont . dataFile
                 FilePath -> PreparedFont n
+loadDataFont = unsafePerformIO . loadFont . dataFile
 
 -- | Bitstream, a standard monospaced font (used in gedit)
 bit :: (Read n, RealFloat n) => PreparedFont n

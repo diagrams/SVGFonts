@@ -40,9 +40,9 @@ text'' t = stroke (textSVG_ (TextOpts lin INSIDE_H KERN True 1 1) t)
              # fc purple # fillRule EvenOdd
 
 -- using a local font
-text''' t = stroke (textSVG' (TextOpts font INSIDE_H KERN False 1 1) t)
-  where
-    font = loadFont "path/to/font.xml"
+text''' t = do
+    font <- loadFont "path/to/font.xml"
+    return $ stroke (textSVG' (TextOpts font INSIDE_H KERN False 1 1) t)
 ```
 
 ## Usage

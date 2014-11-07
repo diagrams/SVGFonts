@@ -84,10 +84,10 @@ data FontData n = FontData
   } 
 
 -- | Open an SVG-Font File and extract the data
-openFont :: (Read n, RealFloat n) => FilePath -> FontData n
-openFont file = readFontData fontElement file
+parseFont :: (Read n, RealFloat n) => FilePath -> String -> FontData n
+parseFont filename contents = readFontData fontElement filename
   where
-    xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
+    xml = onlyElems $ parseXML $ contents
     fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
 
 -- | Read font data from an XML font element.
@@ -318,7 +318,7 @@ prepareFont fontData = (fontData, outlineMap fontData)
 
 -- | Read font data from font file, and compute its outline map.
 loadFont :: (Read n, RealFloat n) => FilePath -> IO (PreparedFont n)
-loadFont file = prepareFont (openFont file)
+loadFont filename = prepareFont . parseFont filename <$> readFile filename
 
 commandsToTrails ::RealFloat n => [PathCommand n] -> [Segment Closed V2 n] -> V2 n -> V2 n -> V2 n -> [Path V2 n]
 commandsToTrails [] _ _ _ _ = []
