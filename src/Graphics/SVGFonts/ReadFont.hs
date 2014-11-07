@@ -46,7 +46,8 @@ data TextOpts n = TextOpts
   , textHeight :: n
   } 
 
--- | The origin is at the center of the text and the boundaries are
+-- | Create a path from the given text and options.
+--   The origin is at the center of the text and the boundaries are
 --   given by the outlines of the chars.
 --
 -- > import Graphics.SVGFonts
@@ -85,7 +86,8 @@ textSVG' to =
     ligatures = ((filter ((>1) . length)) . Map.keys . fontDataGlyphs) fontD
     str = map T.unpack $ characterStrings (txt to) ligatures
 
--- | The origin is at the left end of the baseline of of the text and the boundaries
+-- | Create a path from the given text and options.
+-- The origin is at the left end of the baseline of of the text and the boundaries
 -- are given by the bounding box of the Font. This is best for combining Text of different
 -- fonts and for several lines of text.
 -- As you can see you can also underline text by setting underline to True.
