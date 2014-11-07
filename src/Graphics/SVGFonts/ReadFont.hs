@@ -92,7 +92,7 @@ textSVG' to =
 --
 -- > import Graphics.SVGFonts
 -- >
--- > text'' t = (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1 )
+-- > text'' t = (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1)
 -- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
 -- >
 -- > textPic1 = text'' "Hello World"
