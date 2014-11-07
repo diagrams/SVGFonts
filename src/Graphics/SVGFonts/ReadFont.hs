@@ -351,8 +351,6 @@ kernAdvance ch0 ch1 kern u |     u && not (null s0) = (kernK kern) V.! (head s0)
         s1 = intersect (s kernG1S ch0) (s kernG2S ch1)
         s sel ch = concat (maybeToList (Map.lookup ch (sel kern)))
 
-type OutlineMap n = Map.Map String (Path V2 n)
-
 -- > import Graphics.SVGFonts.ReadFont
 -- > textWH0 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "SPACES" lin INSIDE_WH KERN False 8 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
@@ -447,13 +445,16 @@ underlinePosition fontData = fontDataUnderlinePos fontData
 underlineThickness :: RealFloat n => FontData n -> n
 underlineThickness fontData = fontDataUnderlineThickness fontData
 
--- | Generate Font Data and a Map from chars to outline paths
-outlMap :: (Read n, RealFloat n) => String -> (FontData n, OutlineMap n)
-outlMap str = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
+-- | A map of unicode characters to outline paths.
+type OutlineMap n = Map.Map String (Path V2 n)
+
+-- | Read font data from font file, and compute its outline map.
+outlMap :: (Read n, RealFloat n) => FilePath -> (FontData n, OutlineMap n)
+outlMap file = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
   where
   allUnicodes = Map.keys (fontDataGlyphs fontD)
   outlines ch = mconcat $ commandsToTrails (commands ch (fontDataGlyphs fontD)) [] zero zero zero
-  fontD = openFont str
+  fontD = openFont file
 
 commandsToTrails ::RealFloat n => [PathCommand n] -> [Segment Closed V2 n] -> V2 n -> V2 n -> V2 n -> [Path V2 n]
 commandsToTrails [] _ _ _ _ = []
