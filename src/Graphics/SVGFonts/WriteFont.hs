@@ -17,7 +17,7 @@ import qualified Text.Blaze.Svg11.Attributes as A
 
 import Graphics.SVGFonts.ReadFont
 
-makeSvgFont :: (Show n, S.ToValue n) => (FontData n, OutlineMap n) -> Set.Set String -> S.Svg
+makeSvgFont :: (Show n, S.ToValue n) => PreparedFont n -> Set.Set String -> S.Svg
 makeSvgFont (fd, _) gs =
   font ! A.horizAdvX horizAdvX $ do
     -- Font meta information

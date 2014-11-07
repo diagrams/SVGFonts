@@ -12,6 +12,7 @@ module Graphics.SVGFonts.ReadFont
        , kernAdvance
 
        , OutlineMap
+       , PreparedFont
        , loadFont
        ) where
 
@@ -301,6 +302,9 @@ underlineThickness fontData = fontDataUnderlineThickness fontData
 -- | A map of unicode characters to outline paths.
 type OutlineMap n = Map.Map String (Path V2 n)
 
+-- | A font including its outline map.
+type PreparedFont n = (FontData n, OutlineMap n)
+
 -- | Compute a font's outline map.
 outlineMap :: (Read n, RealFloat n) => FontData n -> OutlineMap n
 outlineMap fontD = Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ]
@@ -308,11 +312,13 @@ outlineMap fontD = Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ]
     allUnicodes = Map.keys (fontDataGlyphs fontD)
     outlines ch = mconcat $ commandsToTrails (commands ch (fontDataGlyphs fontD)) [] zero zero zero
 
+-- | Prepare font for rendering, by determining its ouline map.
+prepareFont :: (Read n, RealFloat n) => FontData n -> PreparedFont n
+prepareFont fontData = (fontData, outlineMap fontData)
+
 -- | Read font data from font file, and compute its outline map.
-loadFont :: (Read n, RealFloat n) => FilePath -> (FontData n, OutlineMap n)
-loadFont file = (fontD, outlineMap fontD)
-  where
-    fontD = openFont file
+loadFont :: (Read n, RealFloat n) => FilePath -> IO (PreparedFont n)
+loadFont file = prepareFont (openFont file)
 
 commandsToTrails ::RealFloat n => [PathCommand n] -> [Segment Closed V2 n] -> V2 n -> V2 n -> V2 n -> [Path V2 n]
 commandsToTrails [] _ _ _ _ = []

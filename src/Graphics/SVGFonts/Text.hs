@@ -26,7 +26,7 @@ import Graphics.SVGFonts.ReadFont
 import Graphics.SVGFonts.CharReference (characterStrings)
 
 data TextOpts n = TextOpts
-  { font       :: (FontData n, OutlineMap n)
+  { font       :: PreparedFont n
   , mode       :: Mode
   , spacing    :: Spacing
   , underline  :: Bool
