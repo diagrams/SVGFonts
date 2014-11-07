@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes       #-}
-
 module Graphics.SVGFonts
     (
       -- * Drawing text
@@ -11,7 +8,12 @@ module Graphics.SVGFonts
 
       -- * Provided fonts
     , bit, lin, lin2
+
+      -- * Loading fonts
+    , loadFont
     )
     where
 
-import           Graphics.SVGFonts.ReadFont
+import Graphics.SVGFonts.Text
+import Graphics.SVGFonts.Fonts    (bit, lin, lin2)
+import Graphics.SVGFonts.ReadFont (loadFont)

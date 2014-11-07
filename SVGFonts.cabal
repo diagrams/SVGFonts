@@ -75,7 +75,9 @@ Library
         xml
     exposed-modules:
         Graphics.SVGFonts
+        Graphics.SVGFonts.Text
         Graphics.SVGFonts.ReadFont
+        Graphics.SVGFonts.Fonts
         Graphics.SVGFonts.CharReference
         Graphics.SVGFonts.ReadPath
         Graphics.SVGFonts.WriteFont

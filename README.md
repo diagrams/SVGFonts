@@ -31,7 +31,7 @@ sense in a Diagrams Backend that does rasterization in Haskell.
 
 import Diagrams.Prelude
 import Diagrams.Backend.Cairo.CmdLine
-import Graphics.SVGFonts.ReadFont
+import Graphics.SVGFonts
 
 main = defaultMain ( (text' "Hello World") <> (rect 8 1) # alignBL )
 
@@ -42,7 +42,7 @@ text'' t = stroke (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1)
 -- using a local font
 text''' t = stroke (textSVG' $ TextOpts t font INSIDE_H KERN False 1 1)
   where
-    font = outlMap "path/to/font.xml"
+    font = loadFont "path/to/font.xml"
 ```
 
 ## Usage
