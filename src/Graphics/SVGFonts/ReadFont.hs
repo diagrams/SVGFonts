@@ -83,9 +83,15 @@ data FontData n = FontData
   } 
 
 -- | Open an SVG-Font File and extract the data
---
 openFont :: (Read n, RealFloat n) => FilePath -> FontData n
-openFont file = FontData 
+openFont file = readFontData fontElement file
+  where
+    xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
+    fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
+
+-- | Read font data from an XML font element.
+readFontData :: (Read n, RealFloat n) => Element -> FilePath -> FontData n
+readFontData fontElement file = FontData
   { fontDataGlyphs      = Map.fromList glyphs
   , fontDataKerning     = Kern
     { kernU1S = transformChars u1s
@@ -145,9 +151,6 @@ openFont file = FontData
     readStringM :: Element -> String -> Maybe String
     readStringM element attr = findAttr (unqual attr) element
     
-    xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
-
-    fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
     fontHadv = fromMaybe ((parsedBBox!!2) - (parsedBBox!!0)) -- BBox is used if there is no "horiz-adv-x" attribute
                          (fmap read (findAttr (unqual "horiz-adv-x") fontElement) )
     fontface = fromJust $ findElement (unqual "font-face") fontElement -- there is always a font-face node
