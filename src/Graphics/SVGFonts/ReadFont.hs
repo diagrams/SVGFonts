@@ -422,8 +422,6 @@ isKern :: Spacing -> Bool
 isKern KERN = True
 isKern _    = False
 
-type FileName = String
-
 -- | read only of static data (safe)
 ro :: FilePath -> FilePath
 ro = unsafePerformIO . getDataFileName
