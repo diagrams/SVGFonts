@@ -16,7 +16,7 @@ module Graphics.SVGFonts.Text
        ) where
 
 import Data.Default.Class
-import Diagrams.Prelude
+import Diagrams.Prelude hiding (font, text)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
@@ -26,17 +26,16 @@ import Graphics.SVGFonts.ReadFont
 import Graphics.SVGFonts.CharReference (characterStrings)
 
 data TextOpts n = TextOpts
-  { txt :: String
-  , fdo :: (FontData n, OutlineMap n)
-  , mode :: Mode
-  , spacing :: Spacing
-  , underline :: Bool
-  , textWidth :: n
+  { font       :: (FontData n, OutlineMap n)
+  , mode       :: Mode
+  , spacing    :: Spacing
+  , underline  :: Bool
+  , textWidth  :: n
   , textHeight :: n
   }
 
 instance (Read n, RealFloat n) => Default (TextOpts n) where
-    def = TextOpts "text" lin INSIDE_H KERN False 1 1
+    def = TextOpts lin INSIDE_H KERN False 1 1
 
 -- | A short version of textSVG' with standard values. The Double value is the height.
 --
@@ -46,7 +45,7 @@ instance (Read n, RealFloat n) => Default (TextOpts n) where
 --
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textSVGExample.svg#diagram=textSVGExample&width=300>>
 textSVG :: (Read n, RealFloat n) => String -> n -> Path V2 n
-textSVG t h = textSVG' with { txt = t, textHeight = h }
+textSVG t h = textSVG' with { textHeight = h } t
 
 -- | Create a path from the given text and options.
 --   The origin is at the center of the text and the boundaries are
@@ -54,14 +53,14 @@ textSVG t h = textSVG' with { txt = t, textHeight = h }
 --
 -- > import Graphics.SVGFonts
 -- >
--- > text' t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False 1 1 )
+-- > text' t = stroke (textSVG' (TextOpts lin INSIDE_H KERN False 1 1) t)
 -- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
 -- >
 -- > textPic0 = (text' "Hello World") # showOrigin
 --
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic0.svg#diagram=textPic0&width=300>>
-textSVG' :: RealFloat n => TextOpts n -> Path V2 n
-textSVG' to =
+textSVG' :: RealFloat n => TextOpts n -> String -> Path V2 n
+textSVG' to text =
   case mode to of
     INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) (textWidth to / (textHeight to * sumh / maxY))
     INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)   1 -- the third character is used to scale horizontal advances
@@ -71,7 +70,7 @@ textSVG' to =
                             mconcat $
                             zipWith translate (horPos space)
                            (map polygonChar (zip str (adjusted_hs space))) ) # centerXY
-    (fontD,outl) = fdo to
+    (fontD,outl) = font to
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
     underlineChar a | underline to = translateY ulinePos (rect a ulineThickness)
                     | otherwise = mempty
@@ -86,7 +85,7 @@ textSVG' to =
     maxY = bbox_dy fontD -- max height of glyph
 
     ligatures = ((filter ((>1) . length)) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings (txt to) ligatures
+    str = map T.unpack $ characterStrings text ligatures
 
 
 -- | Create a path from the given text and options.
@@ -97,14 +96,15 @@ textSVG' to =
 --
 -- > import Graphics.SVGFonts
 -- >
--- > text'' t = (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1)
+-- > text'' t = (textSVG_ (TextOpts lin INSIDE_H KERN True 1 1) t)
 -- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
 -- >
 -- > textPic1 = text'' "Hello World"
 --
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
-textSVG_ :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) => TextOpts n -> QDiagram b V2 n Any
-textSVG_ to =
+textSVG_ :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) =>
+            TextOpts n -> String -> QDiagram b V2 n Any
+textSVG_ to text =
   case mode to of
     INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) ((textWidth to) / (textHeight to * sumh / maxY))
     INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)   1
@@ -117,7 +117,7 @@ textSVG_ to =
                             zipWith translate (horPos space)
                             (map polygonChar (zip str (adjusted_hs space))) ) # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
                           ) # alignBL # translateY (bbox_ly fontD*h/maxY)
-    (fontD,outl) = (fdo to)
+    (fontD,outl) = (font to)
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
     underlineChar a | underline to = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
                     | otherwise = mempty
@@ -132,7 +132,7 @@ textSVG_ to =
     maxY = bbox_dy fontD -- max height of glyph
 
     ligatures = (filter ((>1) . length) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings (txt to) ligatures
+    str = map T.unpack $ characterStrings text ligatures
 
 
 data Mode = INSIDE_H  -- ^ The string fills the complete height, width adjusted. Used in text editors.
