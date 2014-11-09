@@ -1,133 +1,37 @@
-{-# LANGUAGE RankNTypes, FlexibleContexts, ScopedTypeVariables #-}
 module Graphics.SVGFonts.ReadFont
--- (openFont, outlMap, textSVG, textSVG_, Mode(..), Spacing(..), Kern, SvgGlyph, FontData, OutlineMap, TextOpts(..))
-where
+       (
+         FontData(..)
+
+       , bbox_dy
+       , bbox_lx, bbox_ly
+
+       , underlinePosition
+       , underlineThickness
+
+       , horizontalAdvance
+       , kernAdvance
+
+       , OutlineMap
+       , PreparedFont
+       , loadFont
+       ) where
 
 import Data.Char (isSpace)
-import Data.Default.Class
 import Data.List (intersect,sortBy)
 import Data.List.Split (splitOn, splitWhen)
 import Data.Maybe (fromMaybe, fromJust, isJust, isNothing, maybeToList, catMaybes)
 import qualified Data.Map as Map
-import qualified Data.Text as T
 import Data.Tuple.Select
 import Data.Vector (Vector)
 import Diagrams.Path
 import Diagrams.Segment
 import Diagrams.TwoD.Types
-import Diagrams.Prelude
+import Diagrams.Prelude hiding (font)
 import qualified Data.Vector as V
-import Graphics.SVGFonts.CharReference (charsFromFullName, characterStrings)
-import Graphics.SVGFonts.ReadPath (pathFromString, PathCommand(..))
-import Paths_SVGFonts(getDataFileName)
-import System.IO.Unsafe (unsafePerformIO)
 import Text.XML.Light
 
-instance (Read n, RealFloat n) => Default (TextOpts n) where
-    def = TextOpts "text" lin INSIDE_H KERN False 1 1
-
--- | A short version of textSVG' with standard values. The Double value is the height.
---
--- > import Graphics.SVGFonts
--- >
--- > textSVGExample = stroke $ textSVG "Hello World" 1
---
--- <<diagrams/src_Graphics_SVGFonts_ReadFont_textSVGExample.svg#diagram=textSVGExample&width=300>>
-textSVG :: (Read n, RealFloat n) => String -> n -> Path V2 n
-textSVG t h = textSVG' with { txt = t, textHeight = h }
-
-data TextOpts n = TextOpts
-  { txt :: String
-  , fdo :: (FontData n, OutlineMap n)
-  , mode :: Mode
-  , spacing :: Spacing
-  , underline :: Bool
-  , textWidth :: n
-  , textHeight :: n
-  } 
-
--- | The origin is at the center of the text and the boundaries are
---   given by the outlines of the chars.
---
--- > import Graphics.SVGFonts
--- >
--- > text' t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False 1 1 )
--- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
--- >
--- > textPic0 = (text' "Hello World") # showOrigin
---
--- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic0.svg#diagram=textPic0&width=300>>
-textSVG' :: RealFloat n => TextOpts n -> Path V2 n
-textSVG' to =
-  case mode to of
-    INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) (textWidth to / (textHeight to * sumh / maxY))
-    INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)   1 -- the third character is used to scale horizontal advances
-    INSIDE_H  -> makeString (textHeight to * sumh / maxY) (textHeight to) 1
-  where
-    makeString w h space = (scaleY (h/maxY) $ scaleX (w/sumh) $
-                            mconcat $
-                            zipWith translate (horPos space)
-                           (map polygonChar (zip str (adjusted_hs space))) ) # centerXY
-    (fontD,outl) = fdo to
-    polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
-    underlineChar a | underline to = translateY ulinePos (rect a ulineThickness)
-                    | otherwise = mempty
-    ulinePos = underlinePosition fontD
-    ulineThickness = underlineThickness fontD
-    horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
-    adjusted_hs space = map (*space) hs
-    hs = horizontalAdvances str fontD (isKern (spacing to))
-    sumh = sum hs
-    added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
-                       (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
-    maxY = bbox_dy fontD -- max height of glyph
-
-    ligatures = ((filter ((>1) . length)) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings (txt to) ligatures
-
--- | The origin is at the left end of the baseline of of the text and the boundaries
--- are given by the bounding box of the Font. This is best for combining Text of different
--- fonts and for several lines of text.
--- As you can see you can also underline text by setting underline to True.
---
--- > import Graphics.SVGFonts
--- >
--- > text'' t = (textSVG_ $ TextOpts t lin INSIDE_H KERN True 1 1 )
--- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
--- >
--- > textPic1 = text'' "Hello World"
---
--- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
-textSVG_ :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) => TextOpts n -> QDiagram b V2 n Any
-textSVG_ to =
-  case mode to of
-    INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) ((textWidth to) / (textHeight to * sumh / maxY))
-    INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)   1
-    INSIDE_H  -> makeString (textHeight to * sumh / maxY) (textHeight to) 1
-  where
-    makeString w h space =( ( translate (r2 (-w*space/2,-h/2)) $
-                            scaleY (h/maxY) $ scaleX (w/sumh) $
-                            translateY (- bbox_ly fontD) $
-                            mconcat $
-                            zipWith translate (horPos space)
-                            (map polygonChar (zip str (adjusted_hs space))) ) # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
-                          ) # alignBL # translateY (bbox_ly fontD*h/maxY)
-    (fontD,outl) = (fdo to)
-    polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
-    underlineChar a | underline to = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
-                    | otherwise = mempty
-    ulinePos = underlinePosition fontD
-    ulineThickness = underlineThickness fontD
-    horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
-    hs = horizontalAdvances str fontD (isKern (spacing to))
-    adjusted_hs space = map (*space) hs -- the last char should not have space to the border
-    sumh = sum hs
-    added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
-                       (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
-    maxY = bbox_dy fontD -- max height of glyph
-
-    ligatures = (filter ((>1) . length) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings (txt to) ligatures
+import Graphics.SVGFonts.ReadPath (pathFromString, PathCommand(..))
+import Graphics.SVGFonts.CharReference (charsFromFullName)
 
 -- | This type contains everything that a typical SVG font file produced by fontforge contains.
 --
@@ -179,9 +83,15 @@ data FontData n = FontData
   } 
 
 -- | Open an SVG-Font File and extract the data
---
-openFont :: (Read n, RealFloat n) => FilePath -> FontData n
-openFont file = FontData 
+parseFont :: (Read n, RealFloat n) => FilePath -> String -> FontData n
+parseFont filename contents = readFontData fontElement filename
+  where
+    xml = onlyElems $ parseXML $ contents
+    fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
+
+-- | Read font data from an XML font element.
+readFontData :: (Read n, RealFloat n) => Element -> FilePath -> FontData n
+readFontData fontElement file = FontData
   { fontDataGlyphs      = Map.fromList glyphs
   , fontDataKerning     = Kern
     { kernU1S = transformChars u1s
@@ -241,9 +151,6 @@ openFont file = FontData
     readStringM :: Element -> String -> Maybe String
     readStringM element attr = findAttr (unqual attr) element
     
-    xml = onlyElems $ parseXML $ unsafePerformIO $ readFile file
-
-    fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
     fontHadv = fromMaybe ((parsedBBox!!2) - (parsedBBox!!0)) -- BBox is used if there is no "horiz-adv-x" attribute
                          (fmap read (findAttr (unqual "horiz-adv-x") fontElement) )
     fontface = fromJust $ findElement (unqual "font-face") fontElement -- there is always a font-face node
@@ -304,20 +211,11 @@ openFont file = FontData
 type SvgGlyphs n = Map.Map String (String, n, String) 
 -- ^ \[ (unicode, (glyph_name, horiz_advance, ds)) \]
 
--- | Horizontal advances of characters inside a string.
--- A character is stored with a string (because of ligatures like \"ffi\").
-horizontalAdvances :: RealFloat n => [String] -> FontData n -> Bool -> [n]
-horizontalAdvances []          _  _       = []
-horizontalAdvances [ch]        fd _       = [hadv ch fd]
-horizontalAdvances (ch0:ch1:s) fd kerning = ((hadv ch0 fd) - (ka (fontDataKerning fd))) :
-                                            (horizontalAdvances (ch1:s) fd kerning)
-  where ka kern | kerning   = (kernAdvance ch0 ch1 kern True) + (kernAdvance ch0 ch1 kern False)
-                | otherwise = 0
-
 -- | Horizontal advance of a character consisting of its width and spacing, extracted out of the font data
-hadv :: RealFloat n => String -> FontData n -> n
-hadv ch fontD | isJust char = sel2 (fromJust char)
-              | otherwise   = fontDataHorizontalAdvance fontD
+horizontalAdvance :: RealFloat n => String -> FontData n -> n
+horizontalAdvance ch fontD
+    | isJust char = sel2 (fromJust char)
+    | otherwise   = fontDataHorizontalAdvance fontD
   where char = (Map.lookup ch (fontDataGlyphs fontD))
 
 -- | See <http://www.w3.org/TR/SVG/fonts.html#KernElements>
@@ -351,8 +249,6 @@ kernAdvance ch0 ch1 kern u |     u && not (null s0) = (kernK kern) V.! (head s0)
         s1 = intersect (s kernG1S ch0) (s kernG2S ch1)
         s sel ch = concat (maybeToList (Map.lookup ch (sel kern)))
 
-type OutlineMap n = Map.Map String (Path V2 n)
-
 -- > import Graphics.SVGFonts.ReadFont
 -- > textWH0 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "SPACES" lin INSIDE_WH KERN False 8 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
@@ -372,33 +268,6 @@ type OutlineMap n = Map.Map String (Path V2 n)
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
 -- > textH = textH0 # alignBL === strutY 0.5 === textH1 # alignBL
 
-data Mode = INSIDE_H  -- ^ The string fills the complete height, width adjusted. Used in text editors.
-                      -- The result can be smaller or bigger than the bounding box:
-                      --
-                      --   <<diagrams/src_Graphics_SVGFonts_ReadFont_textH.svg#diagram=textH&width=400>>
-          | INSIDE_W  -- ^ The string fills the complete width, height adjusted.
-                      -- May be useful for single words in a diagram, or for headlines.
-                      -- The result can be smaller or bigger than the bounding box:
-                      --
-                      -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textW.svg#diagram=textW&width=400>>
-          | INSIDE_WH -- ^ The string is stretched inside Width and Height boundaries.
-                      -- The horizontal advances are increased if the string is shorter than there is space.
-                      -- The horizontal advances are decreased if the string is longer than there is space.
-                      -- This feature is experimental and might change in the future.
-                      --
-                      -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textWH.svg#diagram=textWH&width=400>>
-           deriving Show
-
-mWH :: Mode -> Bool
-mWH INSIDE_WH = True
-mWH _ = False
-mW :: Mode -> Bool
-mW INSIDE_W = True
-mW _ = False
-mH :: Mode -> Bool
-mH INSIDE_H = True
-mH _ = False
-
 -- > import Graphics.SVGFonts.ReadFont
 -- > textHADV = (textSVG_ $ TextOpts "AVENGERS" lin INSIDE_H HADV False 10 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd
@@ -407,26 +276,6 @@ mH _ = False
 -- > textKern = (textSVG_ $ TextOpts "AVENGERS" lin INSIDE_H KERN False 10 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd
 
--- | See <http://en.wikipedia.org/wiki/Kerning>
---
-data Spacing = HADV -- ^ Every glyph has a unique horiz. advance
-                    --
-                    --  <<diagrams/src_Graphics_SVGFonts_ReadFont_textHADV.svg#diagram=textHADV&width=400>>
-             | KERN -- ^ Recommended, same as HADV but sometimes overridden by kerning:
-                    -- As You can see there is less space between \"A\" and \"V\":
-                    --
-                    --   <<diagrams/src_Graphics_SVGFonts_ReadFont_textKern.svg#diagram=textKern&width=400>>
-             deriving Show
-
-isKern :: Spacing -> Bool
-isKern KERN = True
-isKern _    = False
-
-type FileName = String
-
--- | read only of static data (safe)
-ro :: FilePath -> FilePath
-ro = unsafePerformIO . getDataFileName
 
 -- | Difference between highest and lowest y-value of bounding box
 bbox_dy :: RealFloat n => FontData n -> n
@@ -449,13 +298,45 @@ underlinePosition fontData = fontDataUnderlinePos fontData
 underlineThickness :: RealFloat n => FontData n -> n
 underlineThickness fontData = fontDataUnderlineThickness fontData
 
--- | Generate Font Data and a Map from chars to outline paths
-outlMap :: (Read n, RealFloat n) => String -> (FontData n, OutlineMap n)
-outlMap str = ( fontD, Map.fromList [ (ch, outlines ch) | ch <- allUnicodes ] )
+-- | A map of unicode characters to outline paths.
+type OutlineMap n = Map.Map String (Path V2 n)
+
+-- | A map of unicode characters to parsing errors.
+type ErrorMap = Map.Map String String
+
+-- | A font including its outline map.
+type PreparedFont n = (FontData n, OutlineMap n)
+
+-- | Compute a font's outline map, collecting errors in a second map.
+outlineMap :: (Read n, RealFloat n) =>
+              FontData n -> (OutlineMap n, ErrorMap)
+outlineMap fontData =
+    ( Map.fromList [(ch, outl) | (ch, Right outl) <- allOutlines]
+    , Map.fromList [(ch, err)  | (ch, Left err)   <- allOutlines]
+    )
   where
-  allUnicodes = Map.keys (fontDataGlyphs fontD)
-  outlines ch = mconcat $ commandsToTrails (commands ch (fontDataGlyphs fontD)) [] zero zero zero
-  fontD = openFont str
+    allUnicodes = Map.keys (fontDataGlyphs fontData)
+    outlines ch = do
+        cmds <- commands ch (fontDataGlyphs fontData)
+        return $ mconcat $ commandsToTrails cmds [] zero zero zero
+    allOutlines = [(ch, outlines ch) | ch <- allUnicodes]
+
+-- | Prepare font for rendering, by determining its outline map.
+prepareFont :: (Read n, RealFloat n) =>
+               FontData n -> (PreparedFont n, ErrorMap)
+prepareFont fontData = ((fontData, outlines), errs)
+  where
+    (outlines, errs) = outlineMap fontData
+
+-- | Read font data from font file, and compute its outline map.
+loadFont :: (Read n, RealFloat n) => FilePath -> IO (PreparedFont n)
+loadFont filename = do
+    fontData <- parseFont filename <$> readFile filename
+    let (font, errs) = prepareFont fontData
+    sequence_ [ putStrLn ("error parsing character '" ++ ch ++ "': " ++ err)
+              | (ch, err) <- Map.toList errs
+              ]
+    return font
 
 commandsToTrails ::RealFloat n => [PathCommand n] -> [Segment Closed V2 n] -> V2 n -> V2 n -> V2 n -> [Path V2 n]
 commandsToTrails [] _ _ _ _ = []
@@ -516,29 +397,7 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
         go ( A_abs ) = Nothing
         go ( A_rel ) = Nothing
 
-commands :: RealFloat n => String -> SvgGlyphs n -> [PathCommand n]
-commands ch glyph | isJust element = case pathFromString (sel3 $ fromJust element) of
-                                       Left err -> unsafePerformIO $ do
-                                         putStr "parse error at "
-                                         print err
-                                         return []
-                                       Right p -> p
-                  | otherwise      = []
-  where element = Map.lookup ch glyph
-
--- | Bitstream, a standard monospaced font (used in gedit)
-bit :: (Read n, RealFloat n) => (FontData n, OutlineMap n)
-bit = outlMap (ro "fonts/Bitstream.svg")
-
--- | Linux Libertine, for non-monospaced text: <http://www.linuxlibertine.org/>, contains a lot of unicode characters
-lin :: (Read n, RealFloat n) => (FontData n, OutlineMap n)
-lin = outlMap (ro "fonts/LinLibertine.svg")
-
--- | Linux Libertine, cut to contain only the most common characters,
---   resulting in a smaller file and hence a quicker load time.
-lin2 :: (Read n, RealFloat n) => (FontData n, OutlineMap n)
-lin2 = outlMap (ro "fonts/LinLibertineCut.svg")
-
--- | SourceCode Pro
--- sourcePro :: (FontData, OutlineMap)
--- sourcePro = outlMap (ro "fonts/SourceCodePro-Regular.svg")
+commands :: RealFloat n => String -> SvgGlyphs n -> Either String [PathCommand n]
+commands ch glyph = case Map.lookup ch glyph of
+    Just element -> pathFromString (sel3 element)
+    Nothing      -> Right []

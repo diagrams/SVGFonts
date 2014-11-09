@@ -1,3 +1,10 @@
+- Split functionality out of `ReadFont`, into `Fonts` (built-in fonts) and
+  `Text` (rendering text to Diagrams).
+- `textSVG'` and `textSVG_` now have the text as a separate argument,
+  distinct from `TextOptions`.
+- `ReadFont` does not use `unsafePerformIO` any more. `unsafePerformIO` is
+  now only used to load built-in fonts.
+
 1.4.0.3 (2 June 2014)
 ----------------------
 
