@@ -26,7 +26,7 @@ import Graphics.SVGFonts.ReadFont
 import Graphics.SVGFonts.CharReference (characterStrings)
 
 data TextOpts n = TextOpts
-  { font       :: PreparedFont n
+  { textFont       :: PreparedFont n
   , mode       :: Mode
   , spacing    :: Spacing
   , underline  :: Bool
@@ -70,7 +70,7 @@ textSVG' to text =
                             mconcat $
                             zipWith translate (horPos space)
                            (map polygonChar (zip str (adjusted_hs space))) ) # centerXY
-    (fontD,outl) = font to
+    (fontD,outl) = textFont to
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
     underlineChar a | underline to = translateY ulinePos (rect a ulineThickness)
                     | otherwise = mempty
@@ -117,7 +117,7 @@ textSVG_ to text =
                             zipWith translate (horPos space)
                             (map polygonChar (zip str (adjusted_hs space))) ) # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
                           ) # alignBL # translateY (bbox_ly fontD*h/maxY)
-    (fontD,outl) = (font to)
+    (fontD,outl) = (textFont to)
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
     underlineChar a | underline to = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
                     | otherwise = mempty
