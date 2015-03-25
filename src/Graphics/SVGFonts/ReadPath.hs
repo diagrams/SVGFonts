@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP                        #-}
+
 --------------------------------------------------------------------
 -- |
 -- Module    : Graphics.SVG.ReadPath
@@ -16,7 +18,9 @@ module Graphics.SVGFonts.ReadPath
  )
  where
 
+#if __GLASGOW_HASKELL__ < 710
 import           Control.Applicative                    hiding (many, (<|>))
+#endif
 
 import           Text.ParserCombinators.Parsec          hiding (spaces)
 import           Text.ParserCombinators.Parsec.Language (emptyDef)
