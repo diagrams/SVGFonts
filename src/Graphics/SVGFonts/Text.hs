@@ -60,25 +60,25 @@ textSVG t h = textSVG' with { textHeight = h } t
 --
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic0.svg#diagram=textPic0&width=300>>
 textSVG' :: RealFloat n => TextOpts n -> String -> Path V2 n
-textSVG' to text =
-  case mode to of
-    INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) (textWidth to / (textHeight to * sumh / maxY))
-    INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)   1 -- the third character is used to scale horizontal advances
-    INSIDE_H  -> makeString (textHeight to * sumh / maxY) (textHeight to) 1
+textSVG' topts text =
+  case mode topts of
+    INSIDE_WH -> makeString (textHeight topts * sumh / maxY) (textHeight topts) (textWidth topts / (textHeight topts * sumh / maxY))
+    INSIDE_W  -> makeString (textWidth topts) (textWidth topts * maxY / sumh)   1 -- the third character is used topts scale horizontal advances
+    INSIDE_H  -> makeString (textHeight topts * sumh / maxY) (textHeight topts) 1
   where
     makeString w h space = (scaleY (h/maxY) $ scaleX (w/sumh) $
                             mconcat $
                             zipWith translate (horPos space)
                            (map polygonChar (zip str (adjusted_hs space))) ) # centerXY
-    (fontD,outl) = textFont to
+    (fontD,outl) = textFont topts
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
-    underlineChar a | underline to = translateY ulinePos (rect a ulineThickness)
+    underlineChar a | underline topts = translateY ulinePos (rect a ulineThickness)
                     | otherwise = mempty
     ulinePos = underlinePosition fontD
     ulineThickness = underlineThickness fontD
     horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
     adjusted_hs space = map (*space) hs
-    hs = horizontalAdvances str fontD (isKern (spacing to))
+    hs = horizontalAdvances str fontD (isKern (spacing topts))
     sumh = sum hs
     added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
                        (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
@@ -104,11 +104,11 @@ textSVG' to text =
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
 textSVG_ :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) =>
             TextOpts n -> String -> QDiagram b V2 n Any
-textSVG_ to text =
-  case mode to of
-    INSIDE_WH -> makeString (textHeight to * sumh / maxY) (textHeight to) ((textWidth to) / (textHeight to * sumh / maxY))
-    INSIDE_W  -> makeString (textWidth to) (textWidth to * maxY / sumh)   1
-    INSIDE_H  -> makeString (textHeight to * sumh / maxY) (textHeight to) 1
+textSVG_ topts text =
+  case mode topts of
+    INSIDE_WH -> makeString (textHeight topts * sumh / maxY) (textHeight topts) ((textWidth topts) / (textHeight topts * sumh / maxY))
+    INSIDE_W  -> makeString (textWidth topts) (textWidth topts * maxY / sumh)   1
+    INSIDE_H  -> makeString (textHeight topts * sumh / maxY) (textHeight topts) 1
   where
     makeString w h space =( ( translate (r2 (-w*space/2,-h/2)) $
                             scaleY (h/maxY) $ scaleX (w/sumh) $
@@ -117,14 +117,14 @@ textSVG_ to text =
                             zipWith translate (horPos space)
                             (map polygonChar (zip str (adjusted_hs space))) ) # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
                           ) # alignBL # translateY (bbox_ly fontD*h/maxY)
-    (fontD,outl) = (textFont to)
+    (fontD,outl) = (textFont topts)
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
-    underlineChar a | underline to = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
+    underlineChar a | underline topts = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
                     | otherwise = mempty
     ulinePos = underlinePosition fontD
     ulineThickness = underlineThickness fontD
     horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
-    hs = horizontalAdvances str fontD (isKern (spacing to))
+    hs = horizontalAdvances str fontD (isKern (spacing topts))
     adjusted_hs space = map (*space) hs -- the last char should not have space to the border
     sumh = sum hs
     added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))

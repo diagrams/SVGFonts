@@ -38,7 +38,7 @@ import Graphics.SVGFonts.CharReference (charsFromFullName)
 -- (SvgGlyph, Kern, bbox-string, filename, (underlinePos, underlineThickness),
 --   (fontHadv, fontFamily, fontWeight, fontStretch, unitsPerEm, panose, ascent, descent, xHeight, capHeight, stemh, stemv, unicodeRange) )
 --
-data FontData n = FontData 
+data FontData n = FontData
   { fontDataGlyphs :: SvgGlyphs n
   , fontDataKerning :: Kern n
   , fontDataBoundingBox :: [n]
@@ -65,12 +65,12 @@ data FontData n = FontData
   , fontDataCapHeight :: n
   , fontDataAccentHeight :: Maybe n
   , fontDataWidths :: Maybe String
-  , fontDataHorizontalStem :: Maybe n 
+  , fontDataHorizontalStem :: Maybe n
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
-  , fontDataVerticalStem :: Maybe n 
+  , fontDataVerticalStem :: Maybe n
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
   , fontDataUnicodeRange :: String
-  , fontDataRawKernings :: [(String, [String], [String], [String], [String])] 
+  , fontDataRawKernings :: [(String, [String], [String], [String], [String])]
   , fontDataIdeographicBaseline :: Maybe n
   , fontDataAlphabeticBaseline :: Maybe n
   , fontDataMathematicalBaseline :: Maybe n
@@ -80,7 +80,7 @@ data FontData n = FontData
   , fontDataVMathematicalBaseline :: Maybe n
   , fontDataVHangingBaseline :: Maybe n
     -- ^ (k, g1, g2, u1, u2)
-  } 
+  }
 
 -- | Open an SVG-Font File and extract the data
 parseFont :: (Read n, RealFloat n) => FilePath -> String -> FontData n
@@ -139,18 +139,18 @@ readFontData fontElement file = FontData
   }
   where
     readAttr :: (Read a) => Element -> String -> a
-    readAttr element attr = fromJust $ fmap read $ findAttr (unqual attr) element
-    
+    readAttr e attr = fromJust $ fmap read $ findAttr (unqual attr) e
+
     readAttrM :: (Read a) => Element -> String -> Maybe a
-    readAttrM element attr = fmap read $ findAttr (unqual attr) element
-    
+    readAttrM e attr = fmap read $ findAttr (unqual attr) e
+
     -- | @readString e a d@ : @e@ element to read from; @a@ attribute to read; @d@ default value.
     readString :: Element -> String -> String -> String
-    readString element attr d = fromMaybe d $ findAttr (unqual attr) element
-    
+    readString e attr d = fromMaybe d $ findAttr (unqual attr) e
+
     readStringM :: Element -> String -> Maybe String
-    readStringM element attr = findAttr (unqual attr) element
-    
+    readStringM e attr = findAttr (unqual attr) e
+
     fontHadv = fromMaybe ((parsedBBox!!2) - (parsedBBox!!0)) -- BBox is used if there is no "horiz-adv-x" attribute
                          (fmap read (findAttr (unqual "horiz-adv-x") fontElement) )
     fontface = fromJust $ findElement (unqual "font-face") fontElement -- there is always a font-face node
@@ -179,7 +179,7 @@ readFontData fontElement file = FontData
     g2s         = map (fromMaybe "") $ map (findAttr (unqual "g2"))  kernings
     ks          = map (fromMaybe "") $ map (findAttr (unqual "k"))   kernings
     kAr     = V.fromList (map read ks)
-    
+
     rawKerns = fmap getRawKern kernings
     getRawKern kerning =
       let u1 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "u1") $ kerning
@@ -190,11 +190,11 @@ readFontData fontElement file = FontData
       in (k, g1, g2, u1, u2)
 
     transformChars chars = Map.fromList $ map ch $ multiSet $
-                                          map (\(x,y) -> (x,[y])) $ sort fst $ concat $ index chars
+                                          map (\(x,y) -> (x,[y])) $ sort fst $ concat $ indexList chars
     ch (x,y) | null x = ("",y)
              | otherwise = (x,y)
 
-    index u = addIndex (map (splitWhen isColon) u) -- ie ["aa,b","c,d"] to [["aa","b"],["c","d"]]
+    indexList u = addIndex (map (splitWhen isColon) u) -- ie ["aa,b","c,d"] to [["aa","b"],["c","d"]]
     isColon = (== ',')                             -- to [("aa",0),("b",0)],[("c",1), ("d",1)]
 
     addIndex qs = zipWith (\x y -> (map (\z -> (z,x)) y)) [0..] qs
@@ -208,7 +208,7 @@ readFontData fontElement file = FontData
     fname f = last $ init $ concat (map (splitOn "/") (splitOn "." f))
 
 
-type SvgGlyphs n = Map.Map String (String, n, String) 
+type SvgGlyphs n = Map.Map String (String, n, String)
 -- ^ \[ (unicode, (glyph_name, horiz_advance, ds)) \]
 
 -- | Horizontal advance of a character consisting of its width and spacing, extracted out of the font data
@@ -399,5 +399,5 @@ commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of 
 
 commands :: RealFloat n => String -> SvgGlyphs n -> Either String [PathCommand n]
 commands ch glyph = case Map.lookup ch glyph of
-    Just element -> pathFromString (sel3 element)
+    Just e -> pathFromString (sel3 e)
     Nothing      -> Right []
