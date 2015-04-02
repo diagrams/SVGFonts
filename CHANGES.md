@@ -1,3 +1,6 @@
+1.5.0.0
+-------
+
 - Split functionality out of `ReadFont`, into `Fonts` (built-in fonts) and
   `Text` (rendering text to Diagrams).
 - `textSVG'` and `textSVG_` now have the text as a separate argument,
