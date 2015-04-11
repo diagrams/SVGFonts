@@ -16,70 +16,69 @@ module Graphics.SVGFonts.ReadFont
        , loadFont
        ) where
 
-import Data.Char (isSpace)
-import Data.List (intersect,sortBy)
-import Data.List.Split (splitOn, splitWhen)
-import Data.Maybe (fromMaybe, fromJust, isJust, isNothing, maybeToList, catMaybes)
-import qualified Data.Map as Map
-import Data.Tuple.Select
-import Data.Vector (Vector)
-import Diagrams.Path
-import Diagrams.Segment
-import Diagrams.TwoD.Types
-import Diagrams.Prelude hiding (font)
-import qualified Data.Vector as V
-import Text.XML.Light
+import           Data.Char                       (isSpace)
+import           Data.List                       (intersect, sortBy)
+import           Data.List.Split                 (splitOn, splitWhen)
+import qualified Data.Map                        as Map
+import           Data.Maybe                      (catMaybes, fromJust,
+                                                  fromMaybe, isJust, isNothing,
+                                                  maybeToList)
+import           Data.Tuple.Select
+import           Data.Vector                     (Vector)
+import qualified Data.Vector                     as V
+import           Diagrams.Path
+import           Diagrams.Prelude                hiding (font)
+import           Diagrams.Segment
+import           Diagrams.TwoD.Types
+import           Text.XML.Light
 
-import Graphics.SVGFonts.ReadPath (pathFromString, PathCommand(..))
-import Graphics.SVGFonts.CharReference (charsFromFullName)
+import           Graphics.SVGFonts.CharReference (charsFromFullName)
+import           Graphics.SVGFonts.ReadPath      (PathCommand (..),
+                                                  pathFromString)
 
--- | This type contains everything that a typical SVG font file produced by fontforge contains.
---
--- (SvgGlyph, Kern, bbox-string, filename, (underlinePos, underlineThickness),
---   (fontHadv, fontFamily, fontWeight, fontStretch, unitsPerEm, panose, ascent, descent, xHeight, capHeight, stemh, stemv, unicodeRange) )
---
+-- | This type contains everything that a typical SVG font file produced
+--   by fontforge contains.
 data FontData n = FontData
-  { fontDataGlyphs :: SvgGlyphs n
-  , fontDataKerning :: Kern n
-  , fontDataBoundingBox :: [n]
-  , fontDataFileName :: String
-  , fontDataUnderlinePos :: n
-  , fontDataUnderlineThickness :: n
-  , fontDataOverlinePos :: Maybe n
-  , fontDataOverlineThickness :: Maybe n
-  , fontDataStrikethroughPos :: Maybe n
+  { fontDataGlyphs                 :: SvgGlyphs n
+  , fontDataKerning                :: Kern n
+  , fontDataBoundingBox            :: [n]
+  , fontDataFileName               :: String
+  , fontDataUnderlinePos           :: n
+  , fontDataUnderlineThickness     :: n
+  , fontDataOverlinePos            :: Maybe n
+  , fontDataOverlineThickness      :: Maybe n
+  , fontDataStrikethroughPos       :: Maybe n
   , fontDataStrikethroughThickness :: Maybe n
-  , fontDataHorizontalAdvance :: n
-  , fontDataFamily :: String
-  , fontDataStyle :: String
-  , fontDataWeight :: String
-  , fontDataVariant :: String
-  , fontDataStretch :: String
-  , fontDataSize :: Maybe String
-  , fontDataUnitsPerEm :: n
-  , fontDataPanose :: String
-  , fontDataSlope :: Maybe n
-  , fontDataAscent :: n
-  , fontDataDescent :: n
-  , fontDataXHeight :: n
-  , fontDataCapHeight :: n
-  , fontDataAccentHeight :: Maybe n
-  , fontDataWidths :: Maybe String
-  , fontDataHorizontalStem :: Maybe n
+  , fontDataHorizontalAdvance      :: n
+  , fontDataFamily                 :: String
+  , fontDataStyle                  :: String
+  , fontDataWeight                 :: String
+  , fontDataVariant                :: String
+  , fontDataStretch                :: String
+  , fontDataSize                   :: Maybe String
+  , fontDataUnitsPerEm             :: n
+  , fontDataPanose                 :: String
+  , fontDataSlope                  :: Maybe n
+  , fontDataAscent                 :: n
+  , fontDataDescent                :: n
+  , fontDataXHeight                :: n
+  , fontDataCapHeight              :: n
+  , fontDataAccentHeight           :: Maybe n
+  , fontDataWidths                 :: Maybe String
+  , fontDataHorizontalStem         :: Maybe n
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
-  , fontDataVerticalStem :: Maybe n
+  , fontDataVerticalStem           :: Maybe n
     -- ^ This data is not available in some fonts (e.g. Source Code Pro)
-  , fontDataUnicodeRange :: String
-  , fontDataRawKernings :: [(String, [String], [String], [String], [String])]
-  , fontDataIdeographicBaseline :: Maybe n
-  , fontDataAlphabeticBaseline :: Maybe n
-  , fontDataMathematicalBaseline :: Maybe n
-  , fontDataHangingBaseline :: Maybe n
-  , fontDataVIdeographicBaseline :: Maybe n
-  , fontDataVAlphabeticBaseline :: Maybe n
-  , fontDataVMathematicalBaseline :: Maybe n
-  , fontDataVHangingBaseline :: Maybe n
-    -- ^ (k, g1, g2, u1, u2)
+  , fontDataUnicodeRange           :: String
+  , fontDataRawKernings            :: [(String, [String], [String], [String], [String])]
+  , fontDataIdeographicBaseline    :: Maybe n
+  , fontDataAlphabeticBaseline     :: Maybe n
+  , fontDataMathematicalBaseline   :: Maybe n
+  , fontDataHangingBaseline        :: Maybe n
+  , fontDataVIdeographicBaseline   :: Maybe n
+  , fontDataVAlphabeticBaseline    :: Maybe n
+  , fontDataVMathematicalBaseline  :: Maybe n
+  , fontDataVHangingBaseline       :: Maybe n
   }
 
 -- | Open an SVG-Font File and extract the data
