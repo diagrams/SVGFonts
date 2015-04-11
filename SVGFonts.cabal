@@ -21,21 +21,21 @@ Description:      Native font support for the diagrams framework (<http://projec
                   .
                   XML speed issues can be solved by trimming the svg file to only those characters that are used (or maybe binary xml one day).
                   .
-                  Version 1.0 of this library supports texturing, though this would only sense in a diagrams backend that does rasterization in Haskell.
+                  Version 1.0 of this library supports texturing, though this only makes sense in a diagrams backend that does rasterization in Haskell, such as diagrams-rasterific.
                   .
                   Example:
                   .
                   >  # LANGUAGE NoMonomorphismRestriction #
                   >
                   > import Diagrams.Prelude
-                  > import Diagrams.Backend.Cairo.CmdLine
-                  > import Graphics.SVGFonts.ReadFont (textSVG)
+                  > import Diagrams.Backend.Rasterific.CmdLine
+                  > import Graphics.SVGFonts
                   >
                   > main = defaultMain (text' "Hello World")
                   >
                   > text'   t = stroke (textSVG t 1) # fc purple # fillRule EvenOdd
-                  > text''  t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False 1 1 ) # fillRule EvenOdd
-                  > text''' t =        (textSVG_ $ TextOpts t lin INSIDE_H KERN True  1 1 ) # fillRule EvenOdd
+                  > text''  t = stroke (textSVG' (TextOpts lin INSIDE_H KERN False 1 1) t) # fillRule EvenOdd
+                  > text''' t =        (textSVG_ (TextOpts lin INSIDE_H KERN True  1 1) t) # fillRule EvenOdd
                   .
 category:         Graphics
 License:          BSD3
