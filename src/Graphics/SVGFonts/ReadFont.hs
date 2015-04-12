@@ -28,8 +28,6 @@ import           Data.Vector                     (Vector)
 import qualified Data.Vector                     as V
 import           Diagrams.Path
 import           Diagrams.Prelude                hiding (font)
-import           Diagrams.Segment
-import           Diagrams.TwoD.Types
 import           Text.XML.Light
 
 import           Graphics.SVGFonts.CharReference (charsFromFullName)
