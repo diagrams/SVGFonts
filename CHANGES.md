@@ -1,5 +1,5 @@
-1.5.0.0
--------
+1.5.0.0 (19 April 2015)
+-----------------------
 
 - Split functionality out of `ReadFont`, into `Fonts` (built-in fonts) and
   `Text` (rendering text to Diagrams).
