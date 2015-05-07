@@ -14,48 +14,51 @@
 
 module Graphics.SVGFonts.ReadPath
  ( pathFromString,
+   pathFromByteString,
    PathCommand(..),
  )
  where
 
-#if __GLASGOW_HASKELL__ < 710
-import           Control.Applicative                    hiding (many, (<|>))
-#endif
+import           Control.Applicative
 
-import           Text.ParserCombinators.Parsec          hiding (spaces)
-import           Text.ParserCombinators.Parsec.Language (emptyDef)
-import qualified Text.ParserCombinators.Parsec.Token    as P
+import qualified Data.Attoparsec.ByteString.Char8 as P
+import Data.Attoparsec.ByteString.Char8 (Parser, skipMany, space, many1, try, char)
+import Data.ByteString.Char8 (ByteString)
+import qualified Data.ByteString.Char8 as BS
 
 data PathCommand n =
-  M_abs (n, n) | -- ^Establish a new current point (with absolute coords)
-  M_rel (n, n) | -- ^Establish a new current point (with coords relative to the current point)
+  M_abs !(n, n) | -- ^Establish a new current point (with absolute coords)
+  M_rel !(n, n) | -- ^Establish a new current point (with coords relative to the current point)
   Z | -- ^Close current subpath by drawing a straight line from current point to current subpath's initial point
-  L_abs (n, n) | -- ^A line from the current point to (n, n) which becomes the new current point
-  L_rel (n, n) |
-  H_abs n | -- ^A horizontal line from the current point (cpx, cpy) to (x, cpy)
-  H_rel n |
-  V_abs n | -- ^A vertical line from the current point (cpx, cpy) to (cpx, y)
-  V_rel n |
-  C_abs (n,n,n,n,n,n) | -- ^Draws a cubic Bézier curve from the current point to (x,y) using (x1,y1) as the
+  L_abs !(n, n) | -- ^A line from the current point to (n, n) which becomes the new current point
+  L_rel !(n, n) |
+  H_abs !n | -- ^A horizontal line from the current point (cpx, cpy) to (x, cpy)
+  H_rel !n |
+  V_abs !n | -- ^A vertical line from the current point (cpx, cpy) to (cpx, y)
+  V_rel !n |
+  C_abs !(n,n,n,n,n,n) | -- ^Draws a cubic Bézier curve from the current point to (x,y) using (x1,y1) as the
   -- ^control point at the beginning of the curve and (x2,y2) as the control point at the end of the curve.
-  C_rel (n,n,n,n,n,n) |
-  S_abs (n,n,n,n) | -- ^Draws a cubic Bézier curve from the current point to (x,y). The first control point is
+  C_rel !(n,n,n,n,n,n) |
+  S_abs !(n,n,n,n) | -- ^Draws a cubic Bézier curve from the current point to (x,y). The first control point is
 -- assumed to be the reflection of the second control point on the previous command relative to the current point.
 -- (If there is no previous command or if the previous command was not an C, c, S or s, assume the first control
 -- point is coincident with the current point.) (x2,y2) is the second control point (i.e., the control point at
 -- the end of the curve).
-  S_rel (n,n,n,n) |
-  Q_abs (n,n,n,n) | -- ^A quadr. Bézier curve from the curr. point to (x,y) using (x1,y1) as the control point
-  Q_rel (n,n,n,n) | -- ^Nearly the same as cubic, but with one point less
-  T_abs (n, n) | -- ^T_Abs = Shorthand/smooth quadratic Bezier curveto
-  T_rel (n, n) |
+  S_rel !(n,n,n,n) |
+  Q_abs !(n,n,n,n) | -- ^A quadr. Bézier curve from the curr. point to (x,y) using (x1,y1) as the control point
+  Q_rel !(n,n,n,n) | -- ^Nearly the same as cubic, but with one point less
+  T_abs !(n, n) | -- ^T_Abs = Shorthand/smooth quadratic Bezier curveto
+  T_rel !(n, n) |
   A_abs | -- ^A = Elliptic arc (not used)
   A_rel
   deriving Show
 
 -- | Convert a SVG path string into a list of commands
 pathFromString :: Fractional n => String -> Either String [PathCommand n]
-pathFromString str = case parse path "" str of
+pathFromString = pathFromByteString . BS.pack
+
+pathFromByteString :: Fractional n => ByteString -> Either String [PathCommand n]
+pathFromByteString str = case P.parseOnly path str of
   Left  err -> Left  (show err)
   Right p   -> Right p
 
@@ -64,7 +67,7 @@ spaces = skipMany space
 
 path :: Fractional n => Parser [PathCommand n]
 path = do{ l <- many pathElement
-         ; eof
+         ; P.endOfInput
          ; return (concat l)
          }
 
@@ -119,14 +122,14 @@ myfloat = try (do{ _ <- symbol "-"; n <- float; return (negate n) }) <|>
           try float <|> -- 0 is not recognized as a float, so recognize it as an integer and then convert to float
               do { i<-integer; return(fromIntegral i) }
 
-lexer :: P.TokenParser a
-lexer = P.makeTokenParser emptyDef
-
 whiteSpace :: Parser ()
-whiteSpace      = P.whiteSpace lexer
-symbol :: String -> Parser String
-symbol          = P.symbol lexer
+whiteSpace      = P.skipSpace
+
+symbol :: String -> Parser ()
+symbol s        = P.string (BS.pack s) >> whiteSpace
+
 integer :: Parser Integer
-integer         = P.integer lexer
+integer         = P.decimal
+
 float :: Fractional n => Parser n
-float           = realToFrac <$> P.float lexer
+float           = realToFrac <$> P.double
