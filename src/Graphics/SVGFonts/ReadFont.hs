@@ -342,7 +342,7 @@ loadFont' basename s =
   let
     fontData = parseFont basename s
     (font, errs) = prepareFont fontData
-    errors = concatMap (\(ch, err) -> "error parsing character '" ++ ch ++ "': " ++ err) (Map.toList errs)
+    errors = unlines $ map (\(ch, err) -> "error parsing character '" ++ ch ++ "': " ++ err) (Map.toList errs)
   in
     (errors, font)
 
