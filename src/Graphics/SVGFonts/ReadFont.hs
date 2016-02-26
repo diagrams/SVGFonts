@@ -14,6 +14,7 @@ module Graphics.SVGFonts.ReadFont
        , OutlineMap
        , PreparedFont
        , loadFont
+       , loadFont'
        ) where
 
 import           Data.Char                       (isSpace)
@@ -29,6 +30,7 @@ import qualified Data.Vector                     as V
 import           Diagrams.Path
 import           Diagrams.Prelude                hiding (font)
 import           Text.XML.Light
+import           Text.XML.Light.Lexer (XmlSource)
 
 import           Graphics.SVGFonts.CharReference (charsFromFullName)
 import           Graphics.SVGFonts.ReadPath      (PathCommand (..),
@@ -80,15 +82,15 @@ data FontData n = FontData
   }
 
 -- | Open an SVG-Font File and extract the data
-parseFont :: (Read n, RealFloat n) => FilePath -> String -> FontData n
-parseFont filename contents = readFontData fontElement filename
+parseFont :: (XmlSource s, Read n, RealFloat n) => FilePath -> s -> FontData n
+parseFont basename contents = readFontData fontElement basename
   where
     xml = onlyElems $ parseXML $ contents
     fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
 
 -- | Read font data from an XML font element.
-readFontData :: (Read n, RealFloat n) => Element -> FilePath -> FontData n
-readFontData fontElement file = FontData
+readFontData :: (Read n, RealFloat n) => Element -> String -> FontData n
+readFontData fontElement basename = FontData
   { fontDataGlyphs      = Map.fromList glyphs
   , fontDataKerning     = Kern
     { kernU1S = transformChars u1s
@@ -98,7 +100,7 @@ readFontData fontElement file = FontData
     , kernK = kAr
     }
   , fontDataBoundingBox = parsedBBox
-  , fontDataFileName    = fname file
+  , fontDataFileName    = basename
   , fontDataUnderlinePos       = fontface `readAttr` "underline-position"
   , fontDataUnderlineThickness = fontface `readAttr` "underline-thickness"
   , fontDataHorizontalAdvance  = fontHadv
@@ -202,7 +204,6 @@ readFontData fontElement file = FontData
     multiSet (a:b:bs) | fst a == fst b = multiSet ( (fst a, (snd a) ++ (snd b)) : bs)
                       | otherwise = a : (multiSet (b:bs))
 
-    fname f = last $ init $ concat (map (splitOn "/") (splitOn "." f))
 
 
 type SvgGlyphs n = Map.Map String (String, n, String)
@@ -328,12 +329,22 @@ prepareFont fontData = ((fontData, outlines), errs)
 -- | Read font data from font file, and compute its outline map.
 loadFont :: (Read n, RealFloat n) => FilePath -> IO (PreparedFont n)
 loadFont filename = do
-    fontData <- parseFont filename <$> readFile filename
-    let (font, errs) = prepareFont fontData
-    sequence_ [ putStrLn ("error parsing character '" ++ ch ++ "': " ++ err)
-              | (ch, err) <- Map.toList errs
-              ]
-    return font
+  s <- readFile filename
+  let
+    basename = last $ init $ concat (map (splitOn "/") (splitOn "." filename))
+    (errors, font) = loadFont' basename s
+  putStrLn errors
+  return font
+
+-- | Read font data from an XmlSource, and compute its outline map.
+loadFont' :: (XmlSource s, Read n, RealFloat n) => String -> s -> (String, PreparedFont n)
+loadFont' basename s =
+  let
+    fontData = parseFont basename s
+    (font, errs) = prepareFont fontData
+    errors = unlines $ map (\(ch, err) -> "error parsing character '" ++ ch ++ "': " ++ err) (Map.toList errs)
+  in
+    (errors, font)
 
 commandsToTrails ::RealFloat n => [PathCommand n] -> [Segment Closed V2 n] -> V2 n -> V2 n -> V2 n -> [Path V2 n]
 commandsToTrails [] _ _ _ _ = []
