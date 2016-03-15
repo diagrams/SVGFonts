@@ -10,6 +10,7 @@ module Graphics.SVGFonts.ReadFont
 
        , horizontalAdvance
        , kernAdvance
+       , Kern(..)
 
        , OutlineMap
        , PreparedFont
