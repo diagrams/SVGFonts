@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Graphics.SVGFonts.ReadFont
        (
          FontData(..)
@@ -36,6 +37,10 @@ import           Text.XML.Light.Lexer (XmlSource)
 import           Graphics.SVGFonts.CharReference (charsFromFullName)
 import           Graphics.SVGFonts.ReadPath      (PathCommand (..),
                                                   pathFromString)
+
+import           GHC.Generics                    (Generic)
+import           Data.Serialize                  (Serialize)
+import           Data.Vector.Serialize           ()
 
 -- | This type contains everything that a typical SVG font file produced
 --   by fontforge contains.
@@ -80,7 +85,9 @@ data FontData n = FontData
   , fontDataVAlphabeticBaseline    :: Maybe n
   , fontDataVMathematicalBaseline  :: Maybe n
   , fontDataVHangingBaseline       :: Maybe n
-  }
+  } deriving (Generic)
+
+instance Serialize n => Serialize (FontData n)
 
 -- | Open an SVG-Font File and extract the data
 parseFont :: (XmlSource s, Read n, RealFloat n) => FilePath -> s -> FontData n
@@ -237,7 +244,9 @@ data Kern n = Kern
   , kernG1S :: Map.Map String [Int]
   , kernG2S :: Map.Map String [Int]
   , kernK   :: Vector n
-  } deriving Show
+  } deriving (Show, Generic)
+
+instance Serialize n => Serialize (Kern n)
 
 -- | Change the horizontal advance of two consective chars (kerning)
 kernAdvance :: RealFloat n => String -> String -> Kern n -> Bool -> n
