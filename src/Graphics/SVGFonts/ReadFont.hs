@@ -27,7 +27,6 @@ import           Data.Maybe                      (catMaybes, fromJust,
                                                   fromMaybe, isJust, isNothing,
                                                   maybeToList)
 import           Data.Tuple.Select
-import           Data.Vector                     (Vector)
 import qualified Data.Vector                     as V
 import           Diagrams.Path
 import           Diagrams.Prelude                hiding (font)
@@ -243,7 +242,7 @@ data Kern n = Kern
   , kernU2S :: Map.Map String [Int]
   , kernG1S :: Map.Map String [Int]
   , kernG2S :: Map.Map String [Int]
-  , kernK   :: Vector n
+  , kernK   :: V.Vector n
   } deriving (Show, Generic)
 
 instance Serialize n => Serialize (Kern n)
