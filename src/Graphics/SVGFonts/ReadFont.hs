@@ -209,7 +209,7 @@ type SvgGlyphs n = Map.Map String (String, n, String)
 -- ^ \[ (unicode, (glyph_name, horiz_advance, ds)) \]
 
 -- | Horizontal advance of a character consisting of its width and spacing, extracted out of the font data
-horizontalAdvance :: RealFloat n => String -> FontData n -> n
+horizontalAdvance :: String -> FontData n -> n
 horizontalAdvance ch fontD
     | isJust char = sel2 (fromJust char)
     | otherwise   = fontDataHorizontalAdvance fontD
@@ -280,19 +280,19 @@ bbox_dy fontData = (bbox!!3) - (bbox!!1)
   where bbox = fontDataBoundingBox fontData -- bbox = [lowest x, lowest y, highest x, highest y]
 
 -- | Lowest x-value of bounding box
-bbox_lx :: RealFloat n => FontData n -> n
+bbox_lx :: FontData n -> n
 bbox_lx fontData   = (fontDataBoundingBox fontData) !! 0
 
 -- | Lowest y-value of bounding box
-bbox_ly :: RealFloat n => FontData n -> n
+bbox_ly :: FontData n -> n
 bbox_ly fontData   = (fontDataBoundingBox fontData) !! 1
 
 -- | Position of the underline bar
-underlinePosition :: RealFloat n => FontData n -> n
+underlinePosition :: FontData n -> n
 underlinePosition fontData = fontDataUnderlinePos fontData
 
 -- | Thickness of the underline bar
-underlineThickness :: RealFloat n => FontData n -> n
+underlineThickness :: FontData n -> n
 underlineThickness fontData = fontDataUnderlineThickness fontData
 
 -- | A map of unicode characters to outline paths.
@@ -305,8 +305,7 @@ type ErrorMap = Map.Map String String
 type PreparedFont n = (FontData n, OutlineMap n)
 
 -- | Compute a font's outline map, collecting errors in a second map.
-outlineMap :: (Read n, RealFloat n) =>
-              FontData n -> (OutlineMap n, ErrorMap)
+outlineMap :: RealFloat n => FontData n -> (OutlineMap n, ErrorMap)
 outlineMap fontData =
     ( Map.fromList [(ch, outl) | (ch, Right outl) <- allOutlines]
     , Map.fromList [(ch, err)  | (ch, Left err)   <- allOutlines]
@@ -319,8 +318,7 @@ outlineMap fontData =
     allOutlines = [(ch, outlines ch) | ch <- allUnicodes]
 
 -- | Prepare font for rendering, by determining its outline map.
-prepareFont :: (Read n, RealFloat n) =>
-               FontData n -> (PreparedFont n, ErrorMap)
+prepareFont :: RealFloat n => FontData n -> (PreparedFont n, ErrorMap)
 prepareFont fontData = ((fontData, outlines), errs)
   where
     (outlines, errs) = outlineMap fontData
