@@ -1,3 +1,11 @@
+1.6 (XXX)
+----------
+
+- Performance improvement: port ReadPath to use attoparsec
+- New `loadFont'` function, to read font data from an XmlSource
+- Export `Kern(..)` from `Graphics.SVGFonts.ReadFont`
+- New `Serialize` instances for `FontData` and `Kern`
+
 1.5.0.1 (6 June 2016)
 ---------------------
 
