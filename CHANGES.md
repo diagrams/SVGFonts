@@ -1,5 +1,5 @@
-1.6 (XXX)
-----------
+1.6 (8 August 2016)
+-------------------
 
 - Performance improvement: port ReadPath to use attoparsec
 - New `loadFont'` function, to read font data from an XmlSource
