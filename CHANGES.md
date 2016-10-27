@@ -1,3 +1,9 @@
+1.6.0.1 (27 October 2016)
+-------------------------
+
+- Allow `diagrams-core-1.4`
+- Allow `diagrams-lib-1.4`
+
 1.6 (8 August 2016)
 -------------------
 
