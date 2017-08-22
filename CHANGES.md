@@ -1,3 +1,9 @@
+1.6.0.2 (21 August 2017)
+------------------------
+
+- Bug fix: don't print blank line to stdout when there are no errors. (#23)
+  Thanks to Tim Docker for the fix.
+
 1.6.0.1 (27 October 2016)
 -------------------------
 
