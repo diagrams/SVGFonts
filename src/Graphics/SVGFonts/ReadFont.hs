@@ -19,6 +19,7 @@ module Graphics.SVGFonts.ReadFont
        , loadFont'
        ) where
 
+import           Control.Monad                   (when)
 import           Data.Char                       (isSpace)
 import           Data.List                       (intersect, sortBy)
 import           Data.List.Split                 (splitOn, splitWhen)
@@ -340,7 +341,7 @@ loadFont filename = do
   let
     basename = last $ init $ concat (map (splitOn "/") (splitOn "." filename))
     (errors, font) = loadFont' basename s
-  putStrLn errors
+  when (errors /= "") (putStrLn errors)
   return font
 
 -- | Read font data from an XmlSource, and compute its outline map.
