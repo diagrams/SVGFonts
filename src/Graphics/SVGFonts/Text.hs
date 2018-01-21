@@ -25,6 +25,8 @@ import Graphics.SVGFonts.Fonts (lin)
 import Graphics.SVGFonts.ReadFont
 import Graphics.SVGFonts.CharReference (characterStrings)
 
+import System.IO.Unsafe (unsafePerformIO)
+
 data TextOpts n = TextOpts
   { textFont       :: PreparedFont n
   , mode       :: Mode
@@ -35,7 +37,7 @@ data TextOpts n = TextOpts
   }
 
 instance (Read n, RealFloat n) => Default (TextOpts n) where
-    def = TextOpts lin INSIDE_H KERN False 1 1
+    def = TextOpts (unsafePerformIO lin) INSIDE_H KERN False 1 1
 
 -- | A short version of textSVG' with standard values. The Double value is the height.
 --
@@ -62,8 +64,10 @@ textSVG t h = textSVG' with { textHeight = h } t
 textSVG' :: RealFloat n => TextOpts n -> String -> Path V2 n
 textSVG' topts text =
   case mode topts of
-    INSIDE_WH -> makeString (textHeight topts * sumh / maxY) (textHeight topts) (textWidth topts / (textHeight topts * sumh / maxY))
-    INSIDE_W  -> makeString (textWidth topts) (textWidth topts * maxY / sumh)   1 -- the third character is used topts scale horizontal advances
+    INSIDE_WH -> makeString (textHeight topts * sumh / maxY)
+                            (textHeight topts) (textWidth topts / (textHeight topts * sumh / maxY))
+    INSIDE_W  -> makeString (textWidth topts) -- the third character is used to scale horizontal advances
+                            (textWidth topts * maxY / sumh) 1
     INSIDE_H  -> makeString (textHeight topts * sumh / maxY) (textHeight topts) 1
   where
     makeString w h space = (scaleY (h/maxY) $ scaleX (w/sumh) $
@@ -106,7 +110,8 @@ textSVG_ :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) =>
             TextOpts n -> String -> QDiagram b V2 n Any
 textSVG_ topts text =
   case mode topts of
-    INSIDE_WH -> makeString (textHeight topts * sumh / maxY) (textHeight topts) ((textWidth topts) / (textHeight topts * sumh / maxY))
+    INSIDE_WH -> makeString (textHeight topts * sumh / maxY) (textHeight topts)
+                            ((textWidth topts) / (textHeight topts * sumh / maxY))
     INSIDE_W  -> makeString (textWidth topts) (textWidth topts * maxY / sumh)   1
     INSIDE_H  -> makeString (textHeight topts * sumh / maxY) (textHeight topts) 1
   where
@@ -115,7 +120,8 @@ textSVG_ topts text =
                             translateY (- bbox_ly fontD) $
                             mconcat $
                             zipWith translate (horPos space)
-                            (map polygonChar (zip str (adjusted_hs space))) ) # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
+                            (map polygonChar (zip str (adjusted_hs space))) )
+                                    # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
                           ) # alignBL # translateY (bbox_ly fontD*h/maxY)
     (fontD,outl) = (textFont topts)
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)

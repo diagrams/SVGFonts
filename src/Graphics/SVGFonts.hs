@@ -10,10 +10,10 @@ module Graphics.SVGFonts
     , bit, lin, lin2
 
       -- * Loading fonts
-    , loadFont
+    , loadFont, loadDataFont
     )
     where
 
 import Graphics.SVGFonts.Text
-import Graphics.SVGFonts.Fonts    (bit, lin, lin2)
+import Graphics.SVGFonts.Fonts    (bit, lin, lin2, loadDataFont)
 import Graphics.SVGFonts.ReadFont (loadFont)

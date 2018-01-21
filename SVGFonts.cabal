@@ -1,5 +1,5 @@
 Name:             SVGFonts
-Version:          1.6.0.3
+Version:          1.7
 Synopsis:         Fonts from the SVG-Font format
 Description:      Native font support for the diagrams framework (<http://projects.haskell.org/diagrams/>). Note that this package can be used with any diagrams backend, not just the SVG backend.  The SVG-font format is easy to parse
                   and was therefore chosen for a font library completely written in Haskell.
@@ -28,15 +28,18 @@ Description:      Native font support for the diagrams framework (<http://projec
                   .
                   >  # LANGUAGE NoMonomorphismRestriction #
                   >
-                  > import Diagrams.Prelude
-                  > import Diagrams.Backend.Rasterific.CmdLine
-                  > import Graphics.SVGFonts
+                  > main = do linLibertine <- loadDataFont "fonts/LinLibertine.svg"
+                  >           t <- text'''' linLibertine "Hello"
+                  >           mainWith (t :: Diagram B)
                   >
-                  > main = defaultMain (text' "Hello World")
+                  > text'   font t = stroke (textSVG t 1) # fc purple # fillRule EvenOdd
+                  > text''  font t = stroke (textSVG' (TextOpts font INSIDE_H KERN False 1 1) t) # fillRule EvenOdd
+                  > text''' font t =        (textSVG_ (TextOpts font INSIDE_H KERN True  1 1) t) # fillRule EvenOdd
                   >
-                  > text'   t = stroke (textSVG t 1) # fc purple # fillRule EvenOdd
-                  > text''  t = stroke (textSVG' (TextOpts lin INSIDE_H KERN False 1 1) t) # fillRule EvenOdd
-                  > text''' t =        (textSVG_ (TextOpts lin INSIDE_H KERN True  1 1) t) # fillRule EvenOdd
+                  > -- using a local font
+                  > text'''' font t = do
+                  >    font <- loadFont "/path/to/font.svg"
+                  >    return $ stroke (textSVG' (TextOpts font INSIDE_H KERN False 1 1) t)
                   .
 category:         Graphics
 License:          BSD3

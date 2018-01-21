@@ -94,7 +94,14 @@ parseFont :: (XmlSource s, Read n, RealFloat n) => FilePath -> s -> FontData n
 parseFont basename contents = readFontData fontElement basename
   where
     xml = onlyElems $ parseXML $ contents
-    fontElement = head $ catMaybes $ map (findElement (unqual "font")) xml
+    fontElement | null fontElements = error ("no <font>-tag found in SVG file using SVGFonts library." ++
+                                             "Most likely wrong namespace in <svg>-tag. Please delete xmlns=...")
+                | otherwise = head $ catMaybes $ fontElements
+
+    fontElements = map (findElement (qTag "font")) xml ++ -- sometimes there is a namespace given with <svg xmlns=...
+                   map (findElement (unqual "font")) xml -- sometimes not: <svg>
+
+qTag name = QName {qName = name, qURI = Just "http://www.w3.org/2000/svg", qPrefix = Nothing}
 
 -- | Read font data from an XML font element.
 readFontData :: (Read n, RealFloat n) => Element -> String -> FontData n
@@ -145,55 +152,67 @@ readFontData fontElement basename = FontData
   , fontDataStrikethroughThickness = fontface `readAttrM` "strikethrough-thickness"
   }
   where
+    findAttr' attr e | isJust uq = uq
+                     | otherwise = q
+      where uq = findAttr (unqual attr) e
+            q  = findAttr (qTag attr) e
+
     readAttr :: (Read a) => Element -> String -> a
-    readAttr e attr = fromJust $ fmap read $ findAttr (unqual attr) e
+    readAttr e attr = fromJust $ fmap read $ findAttr' attr e
 
     readAttrM :: (Read a) => Element -> String -> Maybe a
-    readAttrM e attr = fmap read $ findAttr (unqual attr) e
+    readAttrM e attr = fmap read $ findAttr' attr e
 
     -- | @readString e a d@ : @e@ element to read from; @a@ attribute to read; @d@ default value.
     readString :: Element -> String -> String -> String
-    readString e attr d = fromMaybe d $ findAttr (unqual attr) e
+    readString e attr d = fromMaybe d $ findAttr' attr e
 
     readStringM :: Element -> String -> Maybe String
-    readStringM e attr = findAttr (unqual attr) e
+    readStringM e attr = findAttr' attr e
 
     fontHadv = fromMaybe ((parsedBBox!!2) - (parsedBBox!!0)) -- BBox is used if there is no "horiz-adv-x" attribute
-                         (fmap read (findAttr (unqual "horiz-adv-x") fontElement) )
-    fontface = fromJust $ findElement (unqual "font-face") fontElement -- there is always a font-face node
+                         (fmap read (findAttr' "horiz-adv-x" fontElement) )
+    fontface | isJust uq = fromJust uq
+             | isJust q  = fromJust q
+             | otherwise = error "no fontface tag found in SVGFonts library" -- there is always a font-face node
+      where uq = findElement (unqual "font-face") fontElement
+            q  = findElement (qTag   "font-face") fontElement
     bbox     = readString fontface "bbox" ""
     parsedBBox :: Read n => [n]
     parsedBBox = map read $ splitWhen isSpace bbox
 
-    glyphElements = findChildren (unqual "glyph") fontElement
-    kernings = findChildren (unqual "hkern") fontElement
+    glyphElements = findChildren (unqual "glyph") fontElement ++
+                    findChildren (qTag "glyph") fontElement
+    kernings      = findChildren (unqual "hkern") fontElement ++
+                    findChildren (qTag "hkern") fontElement
 
     glyphs = map glyphsWithDefaults glyphElements
 
     -- monospaced fonts sometimes don't have a "horiz-adv-x="-value , replace with "horiz-adv-x=" in <font>
-    glyphsWithDefaults g = (charsFromFullName $ fromMaybe gname (findAttr (unqual "unicode") g), -- there is always a name or unicode
-                             (
-                               gname,
-                               fromMaybe fontHadv (fmap read (findAttr (unqual "horiz-adv-x") g)),
-                               fromMaybe "" (findAttr (unqual "d") g)
-                             )
-                           )
-      where gname = fromMaybe "" (findAttr (unqual "glyph-name") g)
+    glyphsWithDefaults g =
+      (charsFromFullName $ fromMaybe gname (findAttr' "unicode" g), -- there is always a name or unicode
+        (
+          gname,
+          fromMaybe fontHadv (fmap read (findAttr' "horiz-adv-x" g)),
+          fromMaybe "" (findAttr' "d" g)
+        )
+      )
+      where gname = fromMaybe "" (findAttr' "glyph-name" g)
 
-    u1s         = map (fromMaybe "") $ map (findAttr (unqual "u1"))  kernings
-    u2s         = map (fromMaybe "") $ map (findAttr (unqual "u2"))  kernings
-    g1s         = map (fromMaybe "") $ map (findAttr (unqual "g1"))  kernings
-    g2s         = map (fromMaybe "") $ map (findAttr (unqual "g2"))  kernings
-    ks          = map (fromMaybe "") $ map (findAttr (unqual "k"))   kernings
+    u1s         = map (fromMaybe "") $ map (findAttr' "u1")  kernings
+    u2s         = map (fromMaybe "") $ map (findAttr' "u2")  kernings
+    g1s         = map (fromMaybe "") $ map (findAttr' "g1")  kernings
+    g2s         = map (fromMaybe "") $ map (findAttr' "g2")  kernings
+    ks          = map (fromMaybe "") $ map (findAttr' "k")   kernings
     kAr     = V.fromList (map read ks)
 
     rawKerns = fmap getRawKern kernings
     getRawKern kerning =
-      let u1 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "u1") $ kerning
-          u2 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "u2") $ kerning
-          g1 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "g1") $ kerning
-          g2 = splitWhen (==',') $ fromMaybe "" $ findAttr (unqual "g2") $ kerning
-          k  = fromMaybe "" $ findAttr (unqual "k") $ kerning
+      let u1 = splitWhen (==',') $ fromMaybe "" $ findAttr' "u1" $ kerning
+          u2 = splitWhen (==',') $ fromMaybe "" $ findAttr' "u2" $ kerning
+          g1 = splitWhen (==',') $ fromMaybe "" $ findAttr' "g1" $ kerning
+          g2 = splitWhen (==',') $ fromMaybe "" $ findAttr' "g2" $ kerning
+          k  =                     fromMaybe "" $ findAttr' "k"  $ kerning
       in (k, g1, g2, u1, u2)
 
     transformChars chars = Map.fromList $ map ch $ multiSet $
@@ -258,30 +277,32 @@ kernAdvance ch0 ch1 kern u |     u && not (null s0) = (kernK kern) V.! (head s0)
         s sel ch = concat (maybeToList (Map.lookup ch (sel kern)))
 
 -- > import Graphics.SVGFonts.ReadFont
--- > textWH0 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "SPACES" lin INSIDE_WH KERN False 8 1 )
+-- > linL <- loadDataFont "fonts/LinLibertine.svg"
+-- > textWH0 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "SPACES" linL INSIDE_WH KERN False 8 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
--- > textWH1 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "are sometimes better." lin INSIDE_WH KERN False 8 1 )
+-- > textWH1 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "are sometimes better." linL INSIDE_WH KERN False 8 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
--- > textWH2 = (rect 8 1) # alignBL <> ((textSVG_ $ TextOpts "But too many chars are not good." lin INSIDE_WH KERN False 8 1 )
+-- > textWH2 = (rect 8 1) #
+-- >             alignBL <> ((textSVG_ $ TextOpts "But too many chars are not good." linL INSIDE_WH KERN False 8 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
 -- > textWH = textWH0 # alignBL === strutY 0.3 === textWH1 === strutY 0.3 === textWH2 # alignBL
--- > textW0 = (rect 3 1) # alignBL <> ( (textSVG_ $ TextOpts "HEADLINE" lin INSIDE_W KERN False 3 1 )
+-- > textW0 = (rect 3 1) # alignBL <> ( (textSVG_ $ TextOpts "HEADLINE" linL INSIDE_W KERN False 3 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd ) # alignBL
--- > textW1 = (rect 10 1) # alignBL <> ( (textSVG_ $ TextOpts "HEADLINE" lin INSIDE_W KERN False 10 1 )
+-- > textW1 = (rect 10 1) # alignBL <> ( (textSVG_ $ TextOpts "HEADLINE" linL INSIDE_W KERN False 10 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd ) # alignBL
 -- > textW = textW0 # alignBL ||| strutX 1 ||| textW1 # alignBL
--- > textH0 = (rect 10 1) # alignBL <> ((textSVG_ $ TextOpts "Constant font size" lin INSIDE_H KERN False 10 1 )
+-- > textH0 = (rect 10 1) # alignBL <> ((textSVG_ $ TextOpts "Constant font size" linL INSIDE_H KERN False 10 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
--- > textH1 = (rect 3 1) # alignBL <> ((textSVG_ $ TextOpts "Constant font size" lin INSIDE_H KERN False 3 1 )
+-- > textH1 = (rect 3 1) # alignBL <> ((textSVG_ $ TextOpts "Constant font size" linL INSIDE_H KERN False 3 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd) # alignBL
 -- > textH = textH0 # alignBL === strutY 0.5 === textH1 # alignBL
 
 -- > import Graphics.SVGFonts.ReadFont
--- > textHADV = (textSVG_ $ TextOpts "AVENGERS" lin INSIDE_H HADV False 10 1 )
+-- > textHADV = (textSVG_ $ TextOpts "AVENGERS" linL INSIDE_H HADV False 10 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd
 
 -- > import Graphics.SVGFonts.ReadFont
--- > textKern = (textSVG_ $ TextOpts "AVENGERS" lin INSIDE_H KERN False 10 1 )
+-- > textKern = (textSVG_ $ TextOpts "AVENGERS" linL INSIDE_H KERN False 10 1 )
 -- >              # fc blue # lc blue # bg lightgrey # fillRule EvenOdd
 
 
@@ -357,7 +378,8 @@ loadFont' basename s =
 commandsToTrails ::RealFloat n => [PathCommand n] -> [Segment Closed V2 n] -> V2 n -> V2 n -> V2 n -> [Path V2 n]
 commandsToTrails [] _ _ _ _ = []
 commandsToTrails (c:cs) segments l lastContr beginPoint -- l is the endpoint of the last segment
-      | isNothing nextSegment = (translate beginPoint (pathFromTrail . wrapTrail  . closeLine $ lineFromSegments segments)) :
+      | isNothing nextSegment =
+        (translate beginPoint (pathFromTrail . wrapTrail  . closeLine $ lineFromSegments segments)) :
                   ( commandsToTrails cs [] (l ^+^ offs) (contr c) (beginP c) ) -- one outline completed
       | otherwise = commandsToTrails cs (segments ++ [fromJust nextSegment])
                                            (l ^+^ offs) (contr c) (beginP c)   -- work on outline
