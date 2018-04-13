@@ -27,7 +27,6 @@ import qualified Data.Map                        as Map
 import           Data.Maybe                      (catMaybes, fromJust,
                                                   fromMaybe, isJust, isNothing,
                                                   maybeToList)
-import           Data.Tuple.Select
 import qualified Data.Vector                     as V
 import           Diagrams.Path
 import           Diagrams.Prelude                hiding (font)
@@ -101,6 +100,7 @@ parseFont basename contents = readFontData fontElement basename
     fontElements = map (findElement (qTag "font")) xml ++ -- sometimes there is a namespace given with <svg xmlns=...
                    map (findElement (unqual "font")) xml -- sometimes not: <svg>
 
+qTag :: String -> QName
 qTag name = QName {qName = name, qURI = Just "http://www.w3.org/2000/svg", qPrefix = Nothing}
 
 -- | Read font data from an XML font element.
@@ -241,7 +241,9 @@ horizontalAdvance :: String -> FontData n -> n
 horizontalAdvance ch fontD
     | isJust char = sel2 (fromJust char)
     | otherwise   = fontDataHorizontalAdvance fontD
-  where char = (Map.lookup ch (fontDataGlyphs fontD))
+  where
+    char = (Map.lookup ch (fontDataGlyphs fontD))
+    sel2 (_, x, _) = x
 
 -- | See <http://www.w3.org/TR/SVG/fonts.html#KernElements>
 --
@@ -439,3 +441,5 @@ commands :: RealFloat n => String -> SvgGlyphs n -> Either String [PathCommand n
 commands ch glyph = case Map.lookup ch glyph of
     Just e -> pathFromString (sel3 e)
     Nothing      -> Right []
+  where
+    sel3 (_, _, x) = x

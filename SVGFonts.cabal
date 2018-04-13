@@ -77,7 +77,6 @@ Library
         parsec,
         split,
         text,
-        tuple,
         vector,
         xml
     exposed-modules:
