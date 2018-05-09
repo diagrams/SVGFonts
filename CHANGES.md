@@ -1,7 +1,10 @@
-1.7 (21 January 2018)
+1.7 (9 May 2018)
 ---------------------
+
 - Fixed a bug (Fontforge seems to use SVG namespace for some time, which it didn't before)
-- unsafePerformIO removed
+- `unsafePerformIO` removed
+- drop support for GHC 7.6
+- Build with GHC-8.4
 
 1.6.0.3 (25 September 2017)
 ---------------------------
