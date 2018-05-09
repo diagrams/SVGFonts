@@ -47,7 +47,7 @@ License-file:     LICENSE
 Author:           Tillmann Vogt
 Maintainer:       diagrams-discuss@googlegroups.com
 build-type:       Simple
-Cabal-Version:    >=1.18
+Cabal-Version:    1.18
 
 data-files:       fonts/*.svg
 extra-source-files: CHANGES.md, README.md, diagrams/*.svg
