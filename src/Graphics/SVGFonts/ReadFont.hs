@@ -92,13 +92,14 @@ instance Serialize n => Serialize (FontData n)
 parseFont :: (XmlSource s, Read n, RealFloat n) => FilePath -> s -> FontData n
 parseFont basename contents = readFontData fontElement basename
   where
-    xml = onlyElems $ parseXML $ contents
-    fontElement | null fontElements = error ("no <font>-tag found in SVG file using SVGFonts library." ++
-                                             "Most likely wrong namespace in <svg>-tag. Please delete xmlns=...")
-                | otherwise = head $ catMaybes $ fontElements
+    xml = onlyElems $ parseXML contents
+    fontElement = case fontElements of
+        (fe:_) -> fe
+        []     -> error ("no <font>-tag found in SVG file using SVGFonts library." ++
+                         "Most likely wrong namespace in <svg>-tag. Please delete xmlns=...")
 
-    fontElements = map (findElement (qTag "font")) xml ++ -- sometimes there is a namespace given with <svg xmlns=...
-                   map (findElement (unqual "font")) xml -- sometimes not: <svg>
+    fontElements = mapMaybe (findElement (qTag "font")) xml ++ -- sometimes there is a namespace given with <svg xmlns=...
+                   mapMaybe (findElement (unqual "font")) xml -- sometimes not: <svg>
 
 qTag :: String -> QName
 qTag name = QName {qName = name, qURI = Just "http://www.w3.org/2000/svg", qPrefix = Nothing}
