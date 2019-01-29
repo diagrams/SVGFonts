@@ -1,8 +1,10 @@
 1.7.0.1 (29 Jan 2019)
 ---------------------
 
+- Remove strange kerning values in `LinLibertineCut.svg`. ([#29](https://github.com/diagrams/SVGFonts/issues/29))
 - Remove non-ASCII character from `LinLibertine.svg` so users don't
-  have to worry about encoding/locale settings. ([#30](https://github.com/diagrams/SVGFonts/issues/30))
+  have to worry about encoding/locale
+  settings. ([#30](https://github.com/diagrams/SVGFonts/issues/30))
 
 1.7 (9 May 2018)
 ---------------------
