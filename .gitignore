@@ -13,5 +13,6 @@ TAGS
 .diagrams-cache
 /cabal.sandbox.config
 /.cabal-sandbox/
+/dist-newstyle/
 
 .stack-work
