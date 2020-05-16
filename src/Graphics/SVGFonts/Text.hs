@@ -14,6 +14,7 @@ module Graphics.SVGFonts.Text
        , textSVG
        , textSVG'
        , textSVG_
+       , textSVGStretchingWeights
 
        ) where
 
@@ -109,21 +110,46 @@ textSVG' topts text =
 -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
 textSVG_ :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) =>
             TextOpts n -> String -> QDiagram b V2 n Any
-textSVG_ topts text =
+textSVG_ = textSVGStretchingWeights (\_ _ -> 1)
+
+-- | Create a path from the given text and options. Provided stretching
+-- function sets weights for spacing between characters (type of character is
+-- String because of ligatures) used for 'INSIDE_WH' stretching. Spaces with
+-- lower weights will stretch less than the ones with the higher weights. For
+-- the edge case where sum of weights is zero, equal stretching is applied.
+--
+-- The origin is at the left end of the baseline of of the text and the boundaries
+-- are given by the bounding box of the Font. This is best for combining Text of different
+-- fonts and for several lines of text.
+-- As you can see you can also underline text by setting underline to True.
+--
+-- > import Graphics.SVGFonts
+-- >
+-- > text'' t = (textSVG_ (TextOpts lin INSIDE_H KERN True 1 1) t)
+-- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
+-- >
+-- > textPic1 = text'' "Hello World"
+--
+-- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
+textSVGStretchingWeights :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) =>
+  (String -> String -> n) -> TextOpts n -> String -> QDiagram b V2 n Any
+textSVGStretchingWeights stretching_fn topts text =
   case mode topts of
     INSIDE_WH -> makeString (textHeight topts * sumh / maxY) (textHeight topts)
-                            ((textWidth topts) / (textHeight topts * sumh / maxY))
+                            (textWidth topts / (textHeight topts * sumh / maxY))
     INSIDE_W  -> makeString (textWidth topts) (textWidth topts * maxY / sumh)   1
     INSIDE_H  -> makeString (textHeight topts * sumh / maxY) (textHeight topts) 1
   where
-    makeString w h space =( ( translate (r2 (-w*space/2,-h/2)) $
-                            scaleY (h/maxY) $ scaleX (w/sumh) $
-                            translateY (- bbox_ly fontD) $
-                            mconcat $
-                            zipWith translate (horPos space)
-                            (map polygonChar (zip str (adjusted_hs space))) )
-                                    # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
-                          ) # alignBL # translateY (bbox_ly fontD*h/maxY)
+    makeString w h space =
+      ( translate (r2 (-w*space/2,-h/2)) $
+        scaleY (h/maxY) $ scaleX (w/sumh) $
+        translateY (- bbox_ly fontD) $
+        mconcat $
+        zipWith translate (horPos space)
+        (map polygonChar (zip str (adjusted_hs space)))
+      )
+        # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
+        # alignBL # translateY (bbox_ly fontD*h/maxY)
     (fontD,outl) = (textFont topts)
     polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
     underlineChar a | underline topts = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
@@ -132,7 +158,18 @@ textSVG_ topts text =
     ulineThickness = underlineThickness fontD
     horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
     hs = horizontalAdvances str fontD (isKern (spacing topts))
-    adjusted_hs space = map (*space) hs -- the last char should not have space to the border
+
+    stretch_weights
+      | sum_ == 0 = replicate (length ws + 1) 1
+      | otherwise = map (coef*) ws ++ [1]
+      where
+        ws = zipWith stretching_fn str (tail str)
+        sum_ = sum ws
+        coef = fromIntegral (length ws) / sum_
+
+    adjusted_hs space = zipWith
+      (\adv weight -> adv*(1 - (1 - space)*weight))
+      hs stretch_weights -- the last char should not have space to the border
     sumh = sum hs
     added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
                        (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]

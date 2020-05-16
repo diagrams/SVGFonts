@@ -1,7 +1,7 @@
 module Graphics.SVGFonts
     (
       -- * Drawing text
-      textSVG, textSVG', textSVG_
+      textSVG, textSVG', textSVG_, textSVGStretchingWeights
 
       -- * Options
     , TextOpts(..), Mode(..), Spacing(..)
