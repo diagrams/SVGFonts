@@ -90,8 +90,7 @@ textSVG' topts text =
                        (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
-    ligatures = ((filter ((>1) . length)) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings text ligatures
+    str = characterStrings' fontD text
 
 
 -- | Create a path from the given text and options.
@@ -139,8 +138,12 @@ textSVG_ topts text =
                        (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
     maxY = bbox_dy fontD -- max height of glyph
 
-    ligatures = (filter ((>1) . length) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings text ligatures
+    str = characterStrings' fontD text
+
+
+characterStrings' :: FontData n -> String -> [String]
+characterStrings' fontD = \text -> map T.unpack $ characterStrings text ligatures
+  where ligatures = filter ((>1) . length) . Map.keys . fontDataGlyphs$ fontD
 
 
 data Mode = INSIDE_H  -- ^ The string fills the complete height, width adjusted. Used in text editors.
