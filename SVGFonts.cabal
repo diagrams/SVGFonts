@@ -87,4 +87,5 @@ Library
         Graphics.SVGFonts.CharReference
         Graphics.SVGFonts.ReadPath
         Graphics.SVGFonts.WriteFont
+        Graphics.SVGFonts.Wrap
     default-language: Haskell2010

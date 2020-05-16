@@ -16,6 +16,9 @@ module Graphics.SVGFonts.Text
        , textSVG_
        , textSVGStretchingWeights
 
+       , horizontalAdvances
+       , isKern
+       , characterStrings'
        ) where
 
 import Data.Default.Class
