@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Graphics.SVGFonts.Wrap
   ( wrapTextLine
@@ -10,6 +11,7 @@ module Graphics.SVGFonts.Wrap
 
 import Diagrams.Prelude hiding (font, text)
 import Graphics.SVGFonts.Text
+import Graphics.SVGFonts.ReadFont (bbox_dy)
 
 data Modification
   = Append Char
@@ -21,11 +23,11 @@ data Split
   | TextEnd
   deriving Show
 
-wrapTextLine :: forall n m. (TypeableFloat n, Show n, Monad m) =>
-  TextOpts n -> [String -> m Split] -> [(n, n)] -> String -> m (String, String)
-wrapTextLine topts = throughLevels 0
+wrapTextLine :: forall n m. (TypeableFloat n, Monad m) =>
+  TextOpts n -> n -> [String -> m Split] -> [(n, n)] -> String -> m (String, String)
+wrapTextLine topts desired_height = throughLevels 0
   where
-    throughLevels w0 (split:splits) ((minw, maxw):rranges) text =
+    throughLevels w0 (split:splits) ((scale_range -> (minw, maxw)):rranges) text =
       split text >>= oneChunk w0 w0 text
       where
         oneChunk w wmod full_text TextEnd
@@ -43,9 +45,9 @@ wrapTextLine topts = throughLevels 0
                 else throughLevels w splits rranges full_text
           | otherwise = do
               (appendix, rest') <- split rest >>= oneChunk w' wmod' rest
-              if null appendix
-                then return (chunk', rest')
-                else return (chunk ++ appendix, rest')
+              return$ if null appendix
+                then (chunk', rest')
+                else (chunk ++ appendix, rest')
           where
             ((w+) -> w', ligs) = fontInfoOf chunk
             (reverse -> chunk', wdiff) = applyMods modifs$ reverse$ ligs
@@ -55,6 +57,10 @@ wrapTextLine topts = throughLevels 0
 
     (fontD, _) = textFont topts
     isKern_ = isKern (spacing topts)
+
+    font_height = bbox_dy fontD
+    font_scale = font_height / desired_height
+    scale_range (minw, maxw) = (minw*font_scale, maxw*font_scale)
 
     characterStrings_ = characterStrings' fontD
 
@@ -79,8 +85,8 @@ wrapTextLine topts = throughLevels 0
 
 example :: ((String, String), (String, String))
 example =
-  ( runIdentity$ wrapTextLine def splits [(4000 :: Double, 5000), (0, 5000)] text
-  , runIdentity$ wrapTextLine def splits [(6000 :: Double, 8000), (0, 7000)] text
+  ( runIdentity$ wrapTextLine def 10 splits [(40 :: Double, 50), (1, 50)] text
+  , runIdentity$ wrapTextLine def 10 splits [(60 :: Double, 80), (1, 70)] text
   )
   where
     text = "mornin' gentlemen, how is the business going today?"
