@@ -6,6 +6,9 @@
 
 module Graphics.SVGFonts.Wrap
   ( wrapTextLine
+  , wrapText
+  , splitAtSpaces
+  , splitEachTwoChars
   , example
   ) where
 
@@ -24,25 +27,25 @@ data Split
   deriving Show
 
 wrapTextLine :: forall n m. (TypeableFloat n, Monad m) =>
-  TextOpts n -> n -> [String -> m Split] -> [(n, n)] -> String -> m (String, String)
+  TextOpts n -> n -> [(String -> m Split, (n, n))] -> String -> m (String, String)
 wrapTextLine topts desired_height = throughLevels 0
   where
-    throughLevels w0 (split:splits) ((scale_range -> (minw, maxw)):rranges) text =
+    throughLevels w0 ((split, scale_range -> (minw, maxw)):splits) text =
       split text >>= oneChunk w0 w0 text
       where
         oneChunk w wmod full_text TextEnd
           | w' > maxw =
-              if wmod >= minw
+              if wmod > minw
                 then return ("", full_text)
-                else throughLevels w splits rranges full_text
+                else throughLevels w splits full_text
           | otherwise = return (full_text, "")
           where ((w+) -> w', _) = fontInfoOf full_text
 
         oneChunk w wmod full_text (Split chunk rest modifs)
           | wmod' > maxw =
-              if wmod >= minw
+              if wmod > minw
                 then return ("", full_text)
-                else throughLevels w splits rranges full_text
+                else throughLevels w splits full_text
           | otherwise = do
               (appendix, rest') <- split rest >>= oneChunk w' wmod' rest
               return$ if null appendix
@@ -53,7 +56,7 @@ wrapTextLine topts desired_height = throughLevels 0
             (reverse -> chunk', wdiff) = applyMods modifs$ reverse$ ligs
             wmod' = w' + wdiff
 
-    throughLevels _ _ _ _ = error "split levels exhausted"
+    throughLevels _ _ _ = error "split levels exhausted"
 
     (fontD, _) = textFont topts
     isKern_ = isKern (spacing topts)
@@ -83,19 +86,47 @@ wrapTextLine topts desired_height = throughLevels 0
     applyMods _ _ = error "modification not applicable"
 
 
-example :: ((String, String), (String, String))
+wrapText :: forall n m. (TypeableFloat n, Monad m) =>
+  TextOpts n -> n -> [(String -> m Split, (n, n))] -> String -> m [String]
+wrapText topts desired_height splits text = closure text
+  where
+    closure "" = return []
+    closure text_ = do
+      (line, rest) <- wrapTextLine' text_
+      rest' <- closure rest
+      return$ line : rest'
+    wrapTextLine' = wrapTextLine topts desired_height splits
+
+
+splitAtSpaces :: Monad m => String -> m Split
+splitAtSpaces txt = return$
+  case break (== ' ') txt of
+    (_, "") -> TextEnd
+    (chunk, _:rest) -> Split (chunk ++ " ") rest [Erase]
+
+
+splitEachTwoChars :: Monad m => String -> m Split
+splitEachTwoChars txt = return$
+  case splitAt 2 txt of
+    (_, "") -> TextEnd
+    (chunk, rest) -> Split (chunk) rest [Append '-']
+
+
+example :: (Maybe [String], Maybe [String])
 example =
-  ( runIdentity$ wrapTextLine def 10 splits [(40 :: Double, 50), (1, 50)] text
-  , runIdentity$ wrapTextLine def 10 splits [(60 :: Double, 80), (1, 70)] text
+  ( wrapText def 10 splits1 text
+  , wrapText def 10 splits2 text
   )
   where
     text = "mornin' gentlemen, how is the business going today?"
-    splits = [split1, split2]
-    split1 txt = return$
-      case break (== ' ') txt of
-        (_, "") -> TextEnd
-        (chunk, _:rest) -> Split (chunk ++ " ") rest [Erase]
-    split2 txt = return$
-      case splitAt 2 txt of
-        (_, "") -> TextEnd
-        (chunk, rest) -> Split (chunk) rest [Append '-']
+    splits1 =
+      [ (splitAtSpaces, (40 :: Double, 50))
+      , (splitEachTwoChars, (0, 50))
+      , (const Nothing, (-1, 1/0))
+      ]
+
+    splits2 =
+      [ (splitAtSpaces, (0 :: Double, 2))
+      , (splitEachTwoChars, (0, 2))
+      , (const Nothing, (-1, 1/0))
+      ]

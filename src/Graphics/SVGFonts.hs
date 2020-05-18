@@ -11,9 +11,6 @@ module Graphics.SVGFonts
     , set_envelope
     , drop_bounds
 
-      -- * Text boxes
-    , wrapTextLine
-
       -- * Options
     , TextOpts(..), Spacing(..)
 
@@ -28,4 +25,3 @@ module Graphics.SVGFonts
 import Graphics.SVGFonts.Text
 import Graphics.SVGFonts.Fonts    (bit, lin, lin2, loadDataFont)
 import Graphics.SVGFonts.ReadFont (loadFont)
-import Graphics.SVGFonts.Wrap (wrapTextLine)
