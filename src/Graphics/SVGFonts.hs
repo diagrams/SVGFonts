@@ -1,15 +1,15 @@
 module Graphics.SVGFonts
     (
       -- * Drawing text
-      render
-    , render_raw
-    , render_modifyPreglyphs
-    , render_fitRect
-    , render_fitRect'
+      svgText
+    , svgText_raw
+    , svgText_modifyPreglyphs
+    , svgText_fitRect
+    , svgText_fitRect_stretchySpace
     , fit_height
     , fit_width
     , set_envelope
-    , drop_bounds
+    , drop_rect
 
       -- * Options
     , TextOpts(..), Spacing(..)
@@ -19,9 +19,13 @@ module Graphics.SVGFonts
 
       -- * Loading fonts
     , loadFont, loadDataFont
+
+      -- * Backward compatibility
+    , textSVG
     )
     where
 
 import Graphics.SVGFonts.Text
 import Graphics.SVGFonts.Fonts    (bit, lin, lin2, loadDataFont)
 import Graphics.SVGFonts.ReadFont (loadFont)
+import Graphics.SVGFonts.PathInRect

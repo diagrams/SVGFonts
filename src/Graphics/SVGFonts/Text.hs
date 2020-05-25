@@ -17,25 +17,22 @@ module Graphics.SVGFonts.Text
 
        , PreparedText(..)
        , prepare
-       , map_render
+       , draw_glyphs
        , shift_glyphs
 
-       , BoundedPath
-       , render
-       , render_raw
-       , render_modifyPreglyphs
-       , render_fitRect
-       , render_fitRect'
-       , fit_height
-       , fit_width
-       , set_envelope
-       , drop_bounds
+       , svgText
+       , svgText_raw
+       , svgText_modifyPreglyphs
+       , svgText_fitRect
+       , svgText_fitRect_stretchySpace
+
+       , textSVG
        ) where
 
 import Control.Arrow (second)
 
 import Data.Default.Class
-import Diagrams.Prelude hiding (font, text, render, width, height, envelope)
+import Diagrams.Prelude hiding (font, text, width, height, envelope)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
@@ -43,6 +40,7 @@ import qualified Data.Text as T
 import Graphics.SVGFonts.Fonts (lin)
 import Graphics.SVGFonts.ReadFont
 import Graphics.SVGFonts.CharReference (characterStrings)
+import Graphics.SVGFonts.PathInRect (PathInRect(..), drop_rect, fit_height)
 
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -53,7 +51,7 @@ data TextOpts n = TextOpts
   }
 
 instance (Read n, RealFloat n) => Default (TextOpts n) where
-    def = TextOpts (unsafePerformIO lin) KERN False
+  def = TextOpts (unsafePerformIO lin) KERN False
 
 data PreparedText n = PreparedText
   { fontTop :: n
@@ -61,7 +59,7 @@ data PreparedText n = PreparedText
   , preglyphs :: [(String, n)]
   }
 
-prepare :: (TypeableFloat n) => TextOpts n -> String -> PreparedText n
+prepare :: (RealFloat n) => TextOpts n -> String -> PreparedText n
 prepare TextOpts{spacing, textFont=(fontD, _)} text =
   PreparedText (bottom + bbox_dy fontD) bottom (zip preglyphs advances)
   where
@@ -69,8 +67,8 @@ prepare TextOpts{spacing, textFont=(fontD, _)} text =
     preglyphs = characterStrings' fontD text
     advances = horizontalAdvances preglyphs fontD (isKern spacing)
 
-map_render :: (TypeableFloat n) => TextOpts n -> [(String, n)] -> [Path V2 n]
-map_render TextOpts{underline, textFont=(fontD, outl)} preglyphs =
+draw_glyphs :: (RealFloat n) => TextOpts n -> [(String, n)] -> [Path V2 n]
+draw_glyphs TextOpts{underline, textFont=(fontD, outl)} preglyphs =
   map polygonChar preglyphs
   where
     ulinePos = underlinePosition fontD
@@ -81,52 +79,36 @@ map_render TextOpts{underline, textFont=(fontD, outl)} preglyphs =
       | underline = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
       | otherwise = mempty
 
-shift_glyphs :: (TypeableFloat n) => [(n, Path V2 n)] -> [Path V2 n]
+shift_glyphs :: (RealFloat n) => [(n, Path V2 n)] -> [Path V2 n]
 shift_glyphs (unzip -> (advs, glyphs)) = zipWith translateX hor_positions glyphs
   where hor_positions = scanl (+) 0 advs
 
-render_raw :: (TypeableFloat n) => TextOpts n -> String -> Path V2 n
-render_raw topts text = drop_bounds$ render topts text
+svgText_raw :: (RealFloat n) => TextOpts n -> String -> Path V2 n
+svgText_raw topts text = drop_rect$ svgText topts text
 
-type BoundedPath n = (((n, n), n), Path V2 n)
-
-render :: (TypeableFloat n) => TextOpts n -> String -> BoundedPath n
-render topts text =
-  ( ((fontTop, fontBottom), sum advs)
-  , mconcat$ shift_glyphs$ zip advs glyphs
-  )
+svgText :: (RealFloat n) => TextOpts n -> String -> PathInRect n
+svgText topts text = PathInRect 0 fontBottom (sum advs) fontTop$
+  mconcat$ shift_glyphs$ zip advs glyphs
   where
     PreparedText{fontTop, fontBottom, preglyphs} = prepare topts text
     advs = map snd preglyphs
-    glyphs = map_render topts preglyphs
+    glyphs = draw_glyphs topts preglyphs
 
-fit_height :: (TypeableFloat n) => n -> BoundedPath n -> BoundedPath n
-fit_height desired_height (((top, bottom), width), path) =
-  (((scale_*top, scale_*bottom), scale_*width), scale scale_ path)
-  where scale_ = desired_height / (top - bottom)
-
-fit_width :: (TypeableFloat n) => n -> BoundedPath n -> BoundedPath n
-fit_width desired_width (((top, bottom), width), path) =
-  (((scale_*top, scale_*bottom), desired_width), scale scale_$ path)
-  where scale_ = desired_width / width
-
-render_modifyPreglyphs :: (TypeableFloat n, Monad m) =>
-  TextOpts n -> (PreparedText n -> m [(String, n)]) -> String -> m (BoundedPath n)
-render_modifyPreglyphs topts modif text = do
+svgText_modifyPreglyphs :: (RealFloat n, Monad m) =>
+  TextOpts n -> (PreparedText n -> m [(String, n)]) -> String -> m (PathInRect n)
+svgText_modifyPreglyphs topts modif text = do
   preglyphs <- modif prep
   let advs = map snd preglyphs
-      glyphs = map_render topts preglyphs
-  return
-    ( ((fontTop, fontBottom), sum advs)
-    , mconcat$ shift_glyphs$ zip advs glyphs
-    )
+      glyphs = draw_glyphs topts preglyphs
+  return$ PathInRect 0 fontBottom (sum advs) fontTop$
+    mconcat$ shift_glyphs$ zip advs glyphs
   where
     prep@PreparedText{fontTop, fontBottom} = prepare topts text
 
-render_fitRect :: forall n. (TypeableFloat n) =>
-  TextOpts n -> (n, n) -> String -> (BoundedPath n)
-render_fitRect topts (desired_width, desired_height) text =
-  fit_height desired_height$ runIdentity$ render_modifyPreglyphs topts modif text
+svgText_fitRect :: forall n. (RealFloat n) =>
+  TextOpts n -> (n, n) -> String -> (PathInRect n)
+svgText_fitRect topts (desired_width, desired_height) text =
+  fit_height desired_height$ runIdentity$ svgText_modifyPreglyphs topts modif text
   where
     modif :: PreparedText n -> Identity [(String, n)]
     modif PreparedText{fontTop, fontBottom, preglyphs} =
@@ -141,10 +123,15 @@ render_fitRect topts (desired_width, desired_height) text =
 
         addition = (desired_width' - width) / fromIntegral (length advs - 1)
 
-render_fitRect' :: forall n. (TypeableFloat n) =>
-  TextOpts n -> (n, n) -> n -> String -> (BoundedPath n)
-render_fitRect' topts (desired_width, desired_height) space_flexibility text =
-  fit_height desired_height$ runIdentity$ render_modifyPreglyphs topts modif text
+svgText_fitRect_stretchySpace :: forall n. (RealFloat n) =>
+  TextOpts n -> (n, n) -> n -> String -> (PathInRect n)
+svgText_fitRect_stretchySpace
+  topts
+  (desired_width, desired_height)
+  space_flexibility
+  text
+  =
+  fit_height desired_height$ runIdentity$ svgText_modifyPreglyphs topts modif text
   where
     modif :: PreparedText n -> Identity [(String, n)]
     modif PreparedText{fontTop, fontBottom, preglyphs} =
@@ -170,17 +157,6 @@ render_fitRect' topts (desired_width, desired_height) space_flexibility text =
         scaled_preglyphs' =
           zipWith (\add (c, adv) -> (c, adv + add)) additions scaled_preglyphs
 
-set_envelope :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) =>
-  BoundedPath n -> QDiagram b V2 n Any
-set_envelope (((top, bottom), width), path) = path # stroke # withEnvelope envelope
-  where
-    envelope :: D V2 n
-    envelope = translate (r2 (width/2, height/2 + bottom))$ rect width height
-    height = top - bottom
-
-drop_bounds :: forall n. (TypeableFloat n) => BoundedPath n -> Path V2 n
-drop_bounds = snd
-
 characterStrings' :: FontData n -> String -> [String]
 characterStrings' fontD = \text -> map T.unpack $ characterStrings text ligatures
   where ligatures = filter ((>1) . length) . Map.keys . fontDataGlyphs$ fontD
@@ -197,6 +173,7 @@ data Spacing = HADV -- ^ Every glyph has a unique horiz. advance
                     --   <<diagrams/src_Graphics_SVGFonts_ReadFont_textKern.svg#diagram=textKern&width=400>>
              deriving Show
 
+
 isKern :: Spacing -> Bool
 isKern KERN = True
 isKern _    = False
@@ -212,3 +189,9 @@ horizontalAdvances (ch0:ch1:s) fd kerning =
   : (horizontalAdvances (ch1:s) fd kerning)
   where ka kern | kerning   = (kernAdvance ch0 ch1 kern True) + (kernAdvance ch0 ch1 kern False)
                 | otherwise = 0
+
+
+------------------------ Backward Compatibility Layer ------------------------
+
+textSVG :: (Read n, RealFloat n) => String -> n -> Path V2 n
+textSVG text height = drop_rect$ fit_height height$ svgText def text

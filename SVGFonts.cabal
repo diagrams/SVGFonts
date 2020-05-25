@@ -88,4 +88,5 @@ Library
         Graphics.SVGFonts.ReadPath
         Graphics.SVGFonts.WriteFont
         Graphics.SVGFonts.Wrap
+        Graphics.SVGFonts.PathInRect
     default-language: Haskell2010
