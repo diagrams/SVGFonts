@@ -17,29 +17,9 @@ Description:      Native font support for the diagrams framework (<http://projec
                   .
                   * Ligatures
                   .
-                  * An example that shows how to do text boxes with syntax highlighting using highlighting-kate:
-                    <http://hackage.haskell.org/package/highlighting-kate>
-                  .
                   XML speed issues can be solved by trimming the svg file to only those characters that are used (or maybe binary xml one day).
                   .
                   Version 1.0 of this library supports texturing, though this only makes sense in a diagrams backend that does rasterization in Haskell, such as diagrams-rasterific.
-                  .
-                  Example:
-                  .
-                  >  # LANGUAGE NoMonomorphismRestriction #
-                  >
-                  > main = do linLibertine <- loadDataFont "fonts/LinLibertine.svg"
-                  >           t <- text'''' linLibertine "Hello"
-                  >           mainWith (t :: Diagram B)
-                  >
-                  > text'   font t = stroke (textSVG t 1) # fc purple # fillRule EvenOdd
-                  > text''  font t = stroke (textSVG' (TextOpts font INSIDE_H KERN False 1 1) t) # fillRule EvenOdd
-                  > text''' font t =        (textSVG_ (TextOpts font INSIDE_H KERN True  1 1) t) # fillRule EvenOdd
-                  >
-                  > -- using a local font
-                  > text'''' font t = do
-                  >    font <- loadFont "/path/to/font.svg"
-                  >    return $ stroke (textSVG' (TextOpts font INSIDE_H KERN False 1 1) t)
                   .
 category:         Graphics
 License:          BSD3

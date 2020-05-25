@@ -54,11 +54,16 @@ instance (Read n, RealFloat n) => Default (TextOpts n) where
   def = TextOpts (unsafePerformIO lin) KERN False
 
 data PreparedText n = PreparedText
-  { fontTop :: n
+  { fontTop :: n  -- ^ y position of font top.
   , fontBottom :: n
+  -- ^ y position of font bottom
+  -- (usually negative unless the characters are fully above baseline).
   , preglyphs :: [(String, n)]
+  -- Ligatures/singleton characters along with their advances (widths).
   }
 
+-- | Break text into preglyphs (= ligatures and singleton characters) and
+-- compute their advances.
 prepare :: (RealFloat n) => TextOpts n -> String -> PreparedText n
 prepare TextOpts{spacing, textFont=(fontD, _)} text =
   PreparedText (bottom + bbox_dy fontD) bottom (zip preglyphs advances)
@@ -67,6 +72,7 @@ prepare TextOpts{spacing, textFont=(fontD, _)} text =
     preglyphs = characterStrings' fontD text
     advances = horizontalAdvances preglyphs fontD (isKern spacing)
 
+-- | Create a path (glyph) for each preglyph.
 draw_glyphs :: (RealFloat n) => TextOpts n -> [(String, n)] -> [Path V2 n]
 draw_glyphs TextOpts{underline, textFont=(fontD, outl)} preglyphs =
   map polygonChar preglyphs
@@ -79,13 +85,17 @@ draw_glyphs TextOpts{underline, textFont=(fontD, outl)} preglyphs =
       | underline = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
       | otherwise = mempty
 
+-- | Position glyphs according to their advances.
 shift_glyphs :: (RealFloat n) => [(n, Path V2 n)] -> [Path V2 n]
 shift_glyphs (unzip -> (advs, glyphs)) = zipWith translateX hor_positions glyphs
   where hor_positions = scanl (+) 0 advs
 
+-- | Simply render path from text.
 svgText_raw :: (RealFloat n) => TextOpts n -> String -> Path V2 n
 svgText_raw topts text = drop_rect$ svgText topts text
 
+-- | Render 'PathInRect' from text. The enclosing rectangle, computed from the
+-- font, is kept, to be able to e.g. correctly position lines of text one above other.
 svgText :: (RealFloat n) => TextOpts n -> String -> PathInRect n
 svgText topts text = PathInRect 0 fontBottom (sum advs) fontTop$
   mconcat$ shift_glyphs$ zip advs glyphs
@@ -94,6 +104,9 @@ svgText topts text = PathInRect 0 fontBottom (sum advs) fontTop$
     advs = map snd preglyphs
     glyphs = draw_glyphs topts preglyphs
 
+-- | Like 'svgText' but preglyphs can be modified using the given monad before
+-- 'draw_glyphs' is called. Simple examples of this function's specializations are e.g.
+-- 'svgText_fitRect' and 'svgText_fitRect_stretchySpace'.
 svgText_modifyPreglyphs :: (RealFloat n, Monad m) =>
   TextOpts n -> (PreparedText n -> m [(String, n)]) -> String -> m (PathInRect n)
 svgText_modifyPreglyphs topts modif text = do
@@ -105,6 +118,10 @@ svgText_modifyPreglyphs topts modif text = do
   where
     prep@PreparedText{fontTop, fontBottom} = prepare topts text
 
+-- | Like 'svgText' but a rectangle is provided, into which the text will
+-- fit. The text is scaled according to the height of the rectengle. The glyphs
+-- are interleaved with even spaces to fit the width of the rectangle. The text
+-- must have at least two characters for correct functionality.
 svgText_fitRect :: forall n. (RealFloat n) =>
   TextOpts n -> (n, n) -> String -> (PathInRect n)
 svgText_fitRect topts (desired_width, desired_height) text =
@@ -123,6 +140,8 @@ svgText_fitRect topts (desired_width, desired_height) text =
 
         addition = (desired_width' - width) / fromIntegral (length advs - 1)
 
+-- | Like 'svgText_fitRect' but space characters are stretched @k@ times more
+-- than others for @svgText_fitRect_stretchySpace opts (w, h) k text@.
 svgText_fitRect_stretchySpace :: forall n. (RealFloat n) =>
   TextOpts n -> (n, n) -> n -> String -> (PathInRect n)
 svgText_fitRect_stretchySpace
