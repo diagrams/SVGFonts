@@ -3,22 +3,36 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Graphics.SVGFonts.Text
        ( -- * Setting text as a path using a font.
-
          TextOpts(..)
-       , Mode(..)
        , Spacing(..)
 
-       , textSVG
-       , textSVG'
-       , textSVG_
+       , horizontalAdvances
+       , isKern
+       , characterStrings'
 
+       , PreparedText(..)
+       , prepare
+       , draw_glyphs
+       , shift_glyphs
+
+       , svgText
+       , svgText_raw
+       , svgText_modifyPreglyphs
+       , svgText_fitRect
+       , svgText_fitRect_stretchySpace
+
+       , textSVG
        ) where
 
+import Control.Arrow (second)
+
 import Data.Default.Class
-import Diagrams.Prelude hiding (font, text)
+import Diagrams.Prelude hiding (font, text, width, height, envelope)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
@@ -26,139 +40,145 @@ import qualified Data.Text as T
 import Graphics.SVGFonts.Fonts (lin)
 import Graphics.SVGFonts.ReadFont
 import Graphics.SVGFonts.CharReference (characterStrings)
+import Graphics.SVGFonts.PathInRect (PathInRect(..), drop_rect, fit_height)
 
 import System.IO.Unsafe (unsafePerformIO)
 
 data TextOpts n = TextOpts
-  { textFont       :: PreparedFont n
-  , mode       :: Mode
+  { textFont   :: PreparedFont n
   , spacing    :: Spacing
   , underline  :: Bool
-  , textWidth  :: n
-  , textHeight :: n
   }
 
 instance (Read n, RealFloat n) => Default (TextOpts n) where
-    def = TextOpts (unsafePerformIO lin) INSIDE_H KERN False 1 1
+  def = TextOpts (unsafePerformIO lin) KERN False
 
--- | A short version of textSVG' with standard values. The Double value is the height.
---
--- > import Graphics.SVGFonts
--- >
--- > textSVGExample = stroke $ textSVG "Hello World" 1
---
--- <<diagrams/src_Graphics_SVGFonts_ReadFont_textSVGExample.svg#diagram=textSVGExample&width=300>>
-textSVG :: (Read n, RealFloat n) => String -> n -> Path V2 n
-textSVG t h = textSVG' with { textHeight = h } t
+data PreparedText n = PreparedText
+  { fontTop :: n  -- ^ y position of font top.
+  , fontBottom :: n
+  -- ^ y position of font bottom
+  -- (usually negative unless the characters are fully above baseline).
+  , preglyphs :: [(String, n)]
+  -- Ligatures/singleton characters along with their advances (widths).
+  }
 
--- | Create a path from the given text and options.
---   The origin is at the center of the text and the boundaries are
---   given by the outlines of the chars.
---
--- > import Graphics.SVGFonts
--- >
--- > text' t = stroke (textSVG' (TextOpts lin INSIDE_H KERN False 1 1) t)
--- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
--- >
--- > textPic0 = (text' "Hello World") # showOrigin
---
--- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic0.svg#diagram=textPic0&width=300>>
-textSVG' :: RealFloat n => TextOpts n -> String -> Path V2 n
-textSVG' topts text =
-  case mode topts of
-    INSIDE_WH -> makeString (textHeight topts * sumh / maxY)
-                            (textHeight topts) (textWidth topts / (textHeight topts * sumh / maxY))
-    INSIDE_W  -> makeString (textWidth topts) -- the third character is used to scale horizontal advances
-                            (textWidth topts * maxY / sumh) 1
-    INSIDE_H  -> makeString (textHeight topts * sumh / maxY) (textHeight topts) 1
+-- | Break text into preglyphs (= ligatures and singleton characters) and
+-- compute their advances.
+prepare :: (RealFloat n) => TextOpts n -> String -> PreparedText n
+prepare TextOpts{spacing, textFont=(fontD, _)} text =
+  PreparedText (bottom + bbox_dy fontD) bottom (zip preglyphs advances)
   where
-    makeString w h space = (scaleY (h/maxY) $ scaleX (w/sumh) $
-                            mconcat $
-                            zipWith translate (horPos space)
-                           (map polygonChar (zip str (adjusted_hs space))) ) # centerXY
-    (fontD,outl) = textFont topts
-    polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
-    underlineChar a | underline topts = translateY ulinePos (rect a ulineThickness)
-                    | otherwise = mempty
+    bottom = bbox_ly fontD
+    preglyphs = characterStrings' fontD text
+    advances = horizontalAdvances preglyphs fontD (isKern spacing)
+
+-- | Create a path (glyph) for each preglyph.
+draw_glyphs :: (RealFloat n) => TextOpts n -> [(String, n)] -> [Path V2 n]
+draw_glyphs TextOpts{underline, textFont=(fontD, outl)} preglyphs =
+  map polygonChar preglyphs
+  where
     ulinePos = underlinePosition fontD
     ulineThickness = underlineThickness fontD
-    horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
-    adjusted_hs space = map (*space) hs
-    hs = horizontalAdvances str fontD (isKern (spacing topts))
-    sumh = sum hs
-    added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
-                       (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
-    maxY = bbox_dy fontD -- max height of glyph
 
-    ligatures = ((filter ((>1) . length)) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings text ligatures
+    polygonChar (ch, a) = fromMaybe mempty (Map.lookup ch outl) <> underlineChar a
+    underlineChar a
+      | underline = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
+      | otherwise = mempty
 
+-- | Position glyphs according to their advances.
+shift_glyphs :: (RealFloat n) => [(n, Path V2 n)] -> [Path V2 n]
+shift_glyphs (unzip -> (advs, glyphs)) = zipWith translateX hor_positions glyphs
+  where hor_positions = scanl (+) 0 advs
 
--- | Create a path from the given text and options.
--- The origin is at the left end of the baseline of of the text and the boundaries
--- are given by the bounding box of the Font. This is best for combining Text of different
--- fonts and for several lines of text.
--- As you can see you can also underline text by setting underline to True.
---
--- > import Graphics.SVGFonts
--- >
--- > text'' t = (textSVG_ (TextOpts lin INSIDE_H KERN True 1 1) t)
--- >            # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
--- >
--- > textPic1 = text'' "Hello World"
---
--- <<diagrams/src_Graphics_SVGFonts_ReadFont_textPic1.svg#diagram=textPic1&width=300>>
-textSVG_ :: forall b n. (TypeableFloat n, Renderable (Path V2 n) b) =>
-            TextOpts n -> String -> QDiagram b V2 n Any
-textSVG_ topts text =
-  case mode topts of
-    INSIDE_WH -> makeString (textHeight topts * sumh / maxY) (textHeight topts)
-                            ((textWidth topts) / (textHeight topts * sumh / maxY))
-    INSIDE_W  -> makeString (textWidth topts) (textWidth topts * maxY / sumh)   1
-    INSIDE_H  -> makeString (textHeight topts * sumh / maxY) (textHeight topts) 1
+-- | Simply render path from text.
+svgText_raw :: (RealFloat n) => TextOpts n -> String -> Path V2 n
+svgText_raw topts text = drop_rect$ svgText topts text
+
+-- | Render 'PathInRect' from text. The enclosing rectangle, computed from the
+-- font, is kept, to be able to e.g. correctly position lines of text one above other.
+svgText :: (RealFloat n) => TextOpts n -> String -> PathInRect n
+svgText topts text = PathInRect 0 fontBottom (sum advs) fontTop$
+  mconcat$ shift_glyphs$ zip advs glyphs
   where
-    makeString w h space =( ( translate (r2 (-w*space/2,-h/2)) $
-                            scaleY (h/maxY) $ scaleX (w/sumh) $
-                            translateY (- bbox_ly fontD) $
-                            mconcat $
-                            zipWith translate (horPos space)
-                            (map polygonChar (zip str (adjusted_hs space))) )
-                                    # stroke # withEnvelope ((rect (w*space) h) :: D V2 n)
-                          ) # alignBL # translateY (bbox_ly fontD*h/maxY)
-    (fontD,outl) = (textFont topts)
-    polygonChar (ch,a) = (fromMaybe mempty (Map.lookup ch outl)) <> (underlineChar a)
-    underlineChar a | underline topts = translateX (a/2) $ translateY ulinePos (rect a ulineThickness)
-                    | otherwise = mempty
-    ulinePos = underlinePosition fontD
-    ulineThickness = underlineThickness fontD
-    horPos space = reverse $ added ( zero : (map (unitX ^*) (adjusted_hs space)) )
-    hs = horizontalAdvances str fontD (isKern (spacing topts))
-    adjusted_hs space = map (*space) hs -- the last char should not have space to the border
-    sumh = sum hs
-    added = snd.(foldl (\(h,l) (b,_) -> (h ^+^ b, (h ^+^ b):l))
-                       (zero,[])).  (map (\x->(x,[]))) -- [o,o+h0,o+h0+h1,..]
-    maxY = bbox_dy fontD -- max height of glyph
+    PreparedText{fontTop, fontBottom, preglyphs} = prepare topts text
+    advs = map snd preglyphs
+    glyphs = draw_glyphs topts preglyphs
 
-    ligatures = (filter ((>1) . length) . Map.keys . fontDataGlyphs) fontD
-    str = map T.unpack $ characterStrings text ligatures
+-- | Like 'svgText' but preglyphs can be modified using the given monad before
+-- 'draw_glyphs' is called. Simple examples of this function's specializations are e.g.
+-- 'svgText_fitRect' and 'svgText_fitRect_stretchySpace'.
+svgText_modifyPreglyphs :: (RealFloat n, Monad m) =>
+  TextOpts n -> (PreparedText n -> m [(String, n)]) -> String -> m (PathInRect n)
+svgText_modifyPreglyphs topts modif text = do
+  preglyphs <- modif prep
+  let advs = map snd preglyphs
+      glyphs = draw_glyphs topts preglyphs
+  return$ PathInRect 0 fontBottom (sum advs) fontTop$
+    mconcat$ shift_glyphs$ zip advs glyphs
+  where
+    prep@PreparedText{fontTop, fontBottom} = prepare topts text
 
+-- | Like 'svgText' but a rectangle is provided, into which the text will
+-- fit. The text is scaled according to the height of the rectengle. The glyphs
+-- are interleaved with even spaces to fit the width of the rectangle. The text
+-- must have at least two characters for correct functionality.
+svgText_fitRect :: forall n. (RealFloat n) =>
+  TextOpts n -> (n, n) -> String -> (PathInRect n)
+svgText_fitRect topts (desired_width, desired_height) text =
+  fit_height desired_height$ runIdentity$ svgText_modifyPreglyphs topts modif text
+  where
+    modif :: PreparedText n -> Identity [(String, n)]
+    modif PreparedText{fontTop, fontBottom, preglyphs} =
+      return$ map (second (+ addition)) (init preglyphs) ++ [last preglyphs]
+      where
+        scale_ = desired_height / (fontTop - fontBottom)
 
-data Mode = INSIDE_H  -- ^ The string fills the complete height, width adjusted. Used in text editors.
-                      -- The result can be smaller or bigger than the bounding box:
-                      --
-                      --   <<diagrams/src_Graphics_SVGFonts_ReadFont_textH.svg#diagram=textH&width=400>>
-          | INSIDE_W  -- ^ The string fills the complete width, height adjusted.
-                      -- May be useful for single words in a diagram, or for headlines.
-                      -- The result can be smaller or bigger than the bounding box:
-                      --
-                      -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textW.svg#diagram=textW&width=400>>
-          | INSIDE_WH -- ^ The string is stretched inside Width and Height boundaries.
-                      -- The horizontal advances are increased if the string is shorter than there is space.
-                      -- The horizontal advances are decreased if the string is longer than there is space.
-                      -- This feature is experimental and might change in the future.
-                      --
-                      -- <<diagrams/src_Graphics_SVGFonts_ReadFont_textWH.svg#diagram=textWH&width=400>>
-           deriving Show
+        advs = map snd preglyphs
+
+        width = sum (init advs)
+        desired_width' = desired_width / scale_ - last advs
+
+        addition = (desired_width' - width) / fromIntegral (length advs - 1)
+
+-- | Like 'svgText_fitRect' but space characters are stretched @k@ times more
+-- than others for @svgText_fitRect_stretchySpace opts (w, h) k text@.
+svgText_fitRect_stretchySpace :: forall n. (RealFloat n) =>
+  TextOpts n -> (n, n) -> n -> String -> (PathInRect n)
+svgText_fitRect_stretchySpace
+  topts
+  (desired_width, desired_height)
+  space_flexibility
+  text
+  =
+  fit_height desired_height$ runIdentity$ svgText_modifyPreglyphs topts modif text
+  where
+    modif :: PreparedText n -> Identity [(String, n)]
+    modif PreparedText{fontTop, fontBottom, preglyphs} =
+      return$ scaled_preglyphs' ++ [last_preglyph]
+      where
+        scale_ = desired_height / (fontTop - fontBottom)
+
+        scaled_preglyphs = init preglyphs
+        last_preglyph = last preglyphs
+
+        width = sum$ map snd scaled_preglyphs
+        desired_width' = desired_width / scale_ - snd last_preglyph
+
+        width_diff = desired_width' - width
+
+        weight " " = space_flexibility
+        weight _ = 1
+
+        weights = map weight$ map fst$ init preglyphs
+        additions = map (*coef) weights
+          where coef = width_diff / sum weights
+
+        scaled_preglyphs' =
+          zipWith (\add (c, adv) -> (c, adv + add)) additions scaled_preglyphs
+
+characterStrings' :: FontData n -> String -> [String]
+characterStrings' fontD = \text -> map T.unpack $ characterStrings text ligatures
+  where ligatures = filter ((>1) . length) . Map.keys . fontDataGlyphs$ fontD
 
 
 -- | See <http://en.wikipedia.org/wiki/Kerning>
@@ -172,6 +192,7 @@ data Spacing = HADV -- ^ Every glyph has a unique horiz. advance
                     --   <<diagrams/src_Graphics_SVGFonts_ReadFont_textKern.svg#diagram=textKern&width=400>>
              deriving Show
 
+
 isKern :: Spacing -> Bool
 isKern KERN = True
 isKern _    = False
@@ -182,7 +203,14 @@ isKern _    = False
 horizontalAdvances :: RealFloat n => [String] -> FontData n -> Bool -> [n]
 horizontalAdvances []          _  _       = []
 horizontalAdvances [ch]        fd _       = [horizontalAdvance ch fd]
-horizontalAdvances (ch0:ch1:s) fd kerning = ((horizontalAdvance ch0 fd) - (ka (fontDataKerning fd))) :
-                                            (horizontalAdvances (ch1:s) fd kerning)
+horizontalAdvances (ch0:ch1:s) fd kerning =
+  ((horizontalAdvance ch0 fd) - (ka (fontDataKerning fd)))
+  : (horizontalAdvances (ch1:s) fd kerning)
   where ka kern | kerning   = (kernAdvance ch0 ch1 kern True) + (kernAdvance ch0 ch1 kern False)
                 | otherwise = 0
+
+
+------------------------ Backward Compatibility Layer ------------------------
+
+textSVG :: (Read n, RealFloat n) => String -> n -> Path V2 n
+textSVG text height = drop_rect$ fit_height height$ svgText def text
