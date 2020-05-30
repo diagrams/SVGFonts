@@ -27,22 +27,18 @@ sense in a Diagrams Backend that does rasterization in Haskell.
 ## Example
 
 ```
-{-# LANGUAGE NoMonomorphismRestriction #-}
-
 import Diagrams.Prelude
-import Diagrams.Backend.Cairo.CmdLine
-import Graphics.SVGFonts
+import Diagrams.Backend.SVG.CmdLine
+import qualified Graphics.SVGFonts as F
 
-main = defaultMain ( (text' "Hello World") <> (rect 8 1) # alignBL )
-
-text'  t = stroke (textSVG t 1) # fc purple # fillRule EvenOdd
-text'' t = stroke (textSVG_ (TextOpts lin INSIDE_H KERN True 1 1) t)
-             # fc purple # fillRule EvenOdd
-
--- using a local font
-text''' t = do
-    font <- loadFont "path/to/font.xml"
-    return $ stroke (textSVG' (TextOpts font INSIDE_H KERN False 1 1) t)
+main = do
+  font <- F.loadFont "/path/to/font.svg"
+  let
+    diagram :: Diagram B
+    diagram =
+      (F.drop_rect$ F.fit_height 22$ F.svgText def{F.textFont = font} "Hello World!")
+      # stroke # fc blue # lc blue # bg lightgrey # fillRule EvenOdd # showOrigin
+  mainWith diagram
 ```
 
 ## Usage
