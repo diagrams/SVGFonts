@@ -1,7 +1,7 @@
 Name:             SVGFonts
 Version:          1.7.0.1
 Synopsis:         Fonts from the SVG-Font format
-Description:      Native font support for the diagrams framework (<http://projects.haskell.org/diagrams/>). Note that this package can be used with any diagrams backend, not just the SVG backend.  The SVG-font format is easy to parse
+Description:      Native font support for the diagrams framework (<https://diagrams.github.io/>). Note that this package can be used with any diagrams backend, not just the SVG backend.  The SVG-font format is easy to parse
                   and was therefore chosen for a font library completely written in Haskell.
                   .
                   You can convert your own font to SVG with <http://fontforge.github.io/>,
