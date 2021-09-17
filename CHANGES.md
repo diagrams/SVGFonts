@@ -1,3 +1,8 @@
+1.7.0.1-r2 (17 Sep 2021)
+------------------------
+
+- Bump upper bounds to build with GHC 9.0 and `diagrams-core-1.5`.
+
 1.7.0.1 (29 Jan 2019)
 ---------------------
 
