@@ -1,3 +1,11 @@
+1.8 (15 Oct 2021)
+-----------------
+
+- `Graphics.SVGFonts` and `Graphics.SVGFonts.Text` have been greatly
+  refactored and many of the names have changed.  The `textSVG`
+  function is still provided for a bit of backwards compatibility.
+- New module `Graphics.SVGFonts.Wrap` for configurable text wrapping.
+
 1.7.0.1-r2 (17 Sep 2021)
 ------------------------
 
