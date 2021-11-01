@@ -1,3 +1,8 @@
+1.8.0.1 (1 Nov 2021)
+--------------------
+
+- Include a migration guide for updating to version 1.8.
+
 1.8 (15 Oct 2021)
 -----------------
 
