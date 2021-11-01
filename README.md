@@ -49,3 +49,51 @@ your own doesn't work, try the repair options, and if this still
 doesn't work edit the file by hand or [report an
 issue](https://github.com/diagrams/SVGFonts/issues).  Remember that a
 lot of fonts are not allowed to be distributed freely.
+
+## Porting to version 1.8
+
+Version 1.8 of the library greatly improved the API but introduced a
+number of breaking changes.
+
+Previously, functions provided by the library took a large `TextOpts`
+options record and directly produced a diagrams `Path`. For example,
+it was common to see code like this:
+
+```
+text' font h s = (strokeP $ textSVG' (TextOpts font INSIDE_H KERN False h h) s)
+               # lw none # fc black
+```
+
+Compared to this, version 1.8:
+- Introduces a new intermediate type `PathInRect`
+- Splits out width and height options into dedicated
+  combinators such as `fit_width` and `fit_height`
+- There are also several new functions that allow specifying width and
+  height in different ways, such as `svgText_fitRect` and `svgText_fitRect_stretchySpace`.
+
+The only things remaining in `TextOpts` are options for the font,
+spacing mode, and underline.
+
+Here is an idiomatic way to translate the above example code into the
+new API:
+
+```
+text' font h s
+  = (set_envelope . fit_height h . svgText def { textFont = font } $ s)
+  # lw none # fc black
+```
+
+- We use the `svgText` function with a default options record `def`,
+  overriding the `textFont` field to set the font explicitly.
+- We then use the `fit_height` function to scale the resulting text so
+  it has height `h`.  This corresponds to our previous use of
+  `INSIDE_H`.  This is probably the most common mode, but `fit_width`
+  and `svgText_fitRect` also available.
+- Finally, we call `set_envelope` which strokes the text path and
+  appropriately sets the envelope.
+- If you actually want an explicit `Path` instead of a `Diagram`, you
+  can call `drop_rect` instead of `set_envelope`.
+- The old `textSVG'` function resulted in a centered local origin,
+  whereas all the new API functions result in a local origin and the
+  left end of the text baseline.  If you need the text centered, you
+  can of course call `centerXY`.
