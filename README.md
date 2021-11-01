@@ -79,7 +79,10 @@ new API:
 
 ```
 text' font h s
-  = (set_envelope . fit_height h . svgText def { textFont = font } $ s)
+  = s
+  # svgText def { textFont = font }
+  # fit_height h
+  # set_envelope
   # lw none # fc black
 ```
 
