@@ -89,11 +89,12 @@ text' font h s
   it has height `h`.  This corresponds to our previous use of
   `INSIDE_H`.  This is probably the most common mode, but `fit_width`
   and `svgText_fitRect` also available.
-- Finally, we call `set_envelope` which strokes the text path and
-  appropriately sets the envelope.
+- Finally, we call `set_envelope` which converts a `PathInRect` to a
+  `Diagram`, by stroking the text path and appropriately setting the
+  envelope.
 - If you actually want an explicit `Path` instead of a `Diagram`, you
   can call `drop_rect` instead of `set_envelope`.
-- The old `textSVG'` function resulted in a centered local origin,
-  whereas all the new API functions result in a local origin and the
-  left end of the text baseline.  If you need the text centered, you
-  can of course call `centerXY`.
+- Note that the old `textSVG'` function resulted in a centered local
+  origin, whereas all the new API functions result in a local origin
+  and the left end of the text baseline.  If you need the text
+  centered, you can of course call `centerXY`.
