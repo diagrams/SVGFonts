@@ -21,6 +21,8 @@ Description:      Native font support for the diagrams framework (<https://diagr
                   .
                   Version 1.0 of this library supports texturing, though this only makes sense in a diagrams backend that does rasterization in Haskell, such as diagrams-rasterific.
                   .
+                  __Note__: for help porting pre-1.8 code to SVGFonts-1.8, <https://github.com/diagrams/SVGFonts/#porting-to-version-18 see the README>.
+                  .
 category:         Graphics
 License:          BSD3
 License-file:     LICENSE

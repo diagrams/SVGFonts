@@ -1,4 +1,7 @@
 {-|
+
+  __Note__: for help porting pre-1.8 code to SVGFonts-1.8, <https://github.com/diagrams/SVGFonts/#porting-to-version-18 see the README>.
+
   == Text drawing example
 
   The following is a simple example that covers basic use cases of the
