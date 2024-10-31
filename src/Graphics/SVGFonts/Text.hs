@@ -31,7 +31,7 @@ module Graphics.SVGFonts.Text
 
 import Control.Arrow (second)
 
-import Data.Default.Class
+import Data.Default
 import Diagrams.Prelude hiding (font, text, width, height, envelope)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
