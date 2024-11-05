@@ -8,6 +8,8 @@ Hackage revisions:
 - r2 (14 Sep 2024)
     - allow `containers-0.7` and test with GHC 9.4, 9.6, 9.8, and 9.10
     - drop support for GHC 8.0
+- r3 (5 Nov 2024)
+    - allow `data-default-class-0.2`
 
 1.8 (15 Oct 2021)
 -----------------
