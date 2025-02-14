@@ -34,7 +34,7 @@ Cabal-Version:    1.18
 data-files:       fonts/*.svg
 extra-source-files: CHANGES.md, README.md, diagrams/*.svg
 extra-doc-files:    diagrams/*.svg
-Tested-with:      GHC ==8.2.2 || ==8.4.4 || ==8.6.5 || ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.2 || ==9.10.1 || ==9.12.1
+Tested-with:      GHC ==8.4.4 || ==8.6.5 || ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.2 || ==9.10.1 || ==9.12.1
 source-repository head
   type: git
   location: https://github.com/diagrams/SVGFonts.git
