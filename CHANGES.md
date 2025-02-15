@@ -1,3 +1,11 @@
+1.8.1 (15 Feb 2025)
+-------------------
+
+- Require `data-default-class >= 0.2`
+- Allow `diagrams-lib-1.5`
+- Test on GHC 9.12
+- Drop support for GHC 8.2
+
 1.8.0.1 (1 Nov 2021)
 --------------------
 
