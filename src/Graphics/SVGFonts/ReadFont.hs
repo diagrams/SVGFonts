@@ -93,9 +93,10 @@ parseFont :: (XmlSource s, Read n, RealFloat n) => FilePath -> s -> FontData n
 parseFont basename contents = readFontData fontElement basename
   where
     xml = onlyElems $ parseXML $ contents
-    fontElement | null fontElements = error ("no <font>-tag found in SVG file using SVGFonts library." ++
+    fontElement = case catMaybes fontElements of
+      [] -> error ("no <font>-tag found in SVG file using SVGFonts library." ++
                                              "Most likely wrong namespace in <svg>-tag. Please delete xmlns=...")
-                | otherwise = head $ catMaybes $ fontElements
+      (f:_) -> f
 
     fontElements = map (findElement (qTag "font")) xml ++ -- sometimes there is a namespace given with <svg xmlns=...
                    map (findElement (unqual "font")) xml -- sometimes not: <svg>
@@ -271,12 +272,14 @@ instance Serialize n => Serialize (Kern n)
 
 -- | Change the horizontal advance of two consective chars (kerning)
 kernAdvance :: RealFloat n => String -> String -> Kern n -> Bool -> n
-kernAdvance ch0 ch1 kern u |     u && not (null s0) = (kernK kern) V.! (head s0)
-                           | not u && not (null s1) = (kernK kern) V.! (head s1)
-                           | otherwise = 0
-  where s0 = intersect (s kernU1S ch0) (s kernU2S ch1)
-        s1 = intersect (s kernG1S ch0) (s kernG2S ch1)
-        s sel ch = concat (maybeToList (Map.lookup ch (sel kern)))
+kernAdvance ch0 ch1 kern u
+  | u, (s0h : _) <- s0 = kernK kern V.! s0h
+  | not u, (s1h : _) <- s1 = kernK kern V.! s1h
+  | otherwise = 0
+ where
+  s0 = intersect (s kernU1S ch0) (s kernU2S ch1)
+  s1 = intersect (s kernG1S ch0) (s kernG2S ch1)
+  s sel ch = concat (maybeToList (Map.lookup ch (sel kern)))
 
 -- > import Graphics.SVGFonts.ReadFont
 -- > linL <- loadDataFont "fonts/LinLibertine.svg"
