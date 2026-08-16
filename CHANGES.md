@@ -1,3 +1,11 @@
+1.8.2 (15 Aug 2026)
+-------------------
+
+- Fix some warnings
+- Allow `containers-0.8` and `diagrams-lib-1.6`
+- Test on GHC 9.14
+- Remove unnecessary dependencies: `diagrams-core`, `directory`, `parsec`
+
 1.8.1 (15 Feb 2025)
 -------------------
 
